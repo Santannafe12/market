@@ -86,10 +86,27 @@ export function AuctionDetailPage() {
         </div>
       </article>
       {user.role === 'BIDDER' ? <BidPanel auctionId={auctionId} lot={lot} publicId={user.publicId} /> : (
-        <p className="text-sm text-muted-foreground">O leiloeiro não pode dar lances.</p>
+        <div className="flex flex-col gap-2">
+          <LotOutcome lot={lot} />
+          <p className="text-sm text-muted-foreground">O leiloeiro não pode dar lances.</p>
+        </div>
       )}
     </div>
   );
+}
+
+function LotOutcome({ lot }: { lot: PublicAuction }) {
+  if (lot.status === 'SETTLED') return <p className="text-sm">Este lote foi arrematado.</p>;
+  if (lot.status === 'UNSOLD') return <p className="text-sm">Este lote encerrou sem lances.</p>;
+  if (lot.status === 'CANCELLED') return <p className="text-sm">Este lote foi cancelado.</p>;
+  if (lot.status === 'OPEN' && lot.displayStatus === 'ended') {
+    return (
+      <p className="text-sm text-muted-foreground">
+        O horário acabou. A liquidação acontece em instantes. Atualize a página para ver o resultado.
+      </p>
+    );
+  }
+  return null;
 }
 
 function BidPanel({
@@ -158,7 +175,8 @@ function BidPanel({
               Você foi superado.
             </p>
           ) : null}
-          {lot.status === 'OPEN' ? (
+          <LotOutcome lot={lot} />
+          {lot.status === 'OPEN' && lot.displayStatus !== 'ended' ? (
             <form className="flex flex-col gap-4" onSubmit={onSubmit}>
               <div className="flex flex-col gap-2">
                 <Label htmlFor="bid">Seu lance (centavos)</Label>
@@ -196,6 +214,10 @@ function BidPanel({
           <CardDescription>
             <Link className="underline" to="/carteira">
               Depositar
+            </Link>
+            {' · '}
+            <Link className="underline" to="/arremates">
+              Meus arremates
             </Link>
           </CardDescription>
         </CardHeader>

@@ -15,6 +15,7 @@ import {
   editionPreview,
   myAuctions,
   searchWorks,
+  sellerReceived,
   workEditions,
   type PublicAuction,
 } from '@/lib/api';
@@ -378,12 +379,13 @@ function MyLots() {
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
   const lots = useQuery({ queryKey: ['auctions', 'mine'], queryFn: myAuctions });
+  const received = useQuery({ queryKey: ['auctions', 'received'], queryFn: sellerReceived });
   const cancel = useMutation({
     mutationFn: cancelAuction,
     onSuccess: async (lot) => {
       setConfirming(null);
       setError('');
-      setMessage(`${lot.title} foi cancelado.`);
+      setMessage(`${lot.title} foi cancelado. Se havia um líder, o saldo comprometido voltou a ficar disponível.`);
       await queryClient.invalidateQueries({ queryKey: ['auctions'] });
       await queryClient.invalidateQueries({ queryKey: ['auction'] });
     },
@@ -395,7 +397,32 @@ function MyLots() {
 
   return (
     <section className="flex flex-col gap-3">
-      <h2 className="text-lg font-semibold">Meus lotes</h2>
+      <div className="flex flex-wrap items-end justify-between gap-3">
+        <h2 className="text-lg font-semibold">Meus lotes</h2>
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          onClick={() => {
+            void queryClient.invalidateQueries({ queryKey: ['auctions', 'mine'] });
+            void queryClient.invalidateQueries({ queryKey: ['auctions', 'received'] });
+          }}
+        >
+          Atualizar
+        </Button>
+      </div>
+      {received.isPending ? <p className="text-sm text-muted-foreground">Carregando total recebido...</p> : null}
+      {received.isError ? (
+        <InlineError
+          message={errorMessage(received.error, 'Não foi possível carregar o total recebido.')}
+          onRetry={() => void received.refetch()}
+        />
+      ) : null}
+      {received.data ? (
+        <p className="text-sm">
+          Total recebido: {formatCents(received.data.receivedCents)}. Soma dos créditos de liquidação, sem contar depósitos.
+        </p>
+      ) : null}
       {lots.isPending ? <p className="text-sm text-muted-foreground">Carregando seus lotes...</p> : null}
       {lots.isError ? (
         <InlineError
@@ -443,7 +470,8 @@ function OwnedLot({
   onBack: () => void;
   onConfirm: () => void;
 }) {
-  const canCancel = lot.status === 'OPEN' && lot.bidCount === 0;
+  const canCancel = lot.status === 'OPEN';
+  const waiting = lot.status === 'OPEN' && lot.displayStatus === 'ended';
   return (
     <Card>
       <CardContent className="flex flex-col gap-3 p-4 sm:flex-row">
@@ -459,19 +487,35 @@ function OwnedLot({
             {formatCents(lot.startingBidCents)} · {lot.bidCount} {lot.bidCount === 1 ? 'lance' : 'lances'} · fim{' '}
             {formatWhen(lot.endsAt)}
           </p>
+          {lot.status === 'SETTLED' && lot.currentBidCents !== null ? (
+            <p className="text-sm">Arrematado por {formatCents(lot.currentBidCents)}.</p>
+          ) : null}
+          {lot.status === 'UNSOLD' ? <p className="text-sm">Encerrado sem vencedor.</p> : null}
+          {waiting ? (
+            <p className="text-sm text-muted-foreground">
+              Encerrado, aguardando liquidação. Isso pode levar alguns segundos.
+            </p>
+          ) : null}
           {canCancel && !confirming ? (
             <Button className="self-start" type="button" variant="outline" size="sm" onClick={onAsk}>
               Cancelar lote
             </Button>
           ) : null}
           {canCancel && confirming ? (
-            <div className="flex flex-wrap gap-2">
+            <div className="flex flex-col gap-2">
+              <p className="text-sm text-muted-foreground">
+                {lot.bidCount > 0
+                  ? 'O saldo comprometido do líder será liberado e voltará a ficar disponível. Nenhum valor será creditado de novo na carteira.'
+                  : 'Este lote ainda não tem lances. O cancelamento apenas o encerra.'}
+              </p>
+              <div className="flex flex-wrap gap-2">
               <Button type="button" variant="destructive" size="sm" onClick={onConfirm} disabled={pending}>
                 {pending ? 'Cancelando...' : 'Confirmar cancelamento'}
               </Button>
               <Button type="button" variant="outline" size="sm" onClick={onBack} disabled={pending}>
                 Voltar
               </Button>
+              </div>
             </div>
           ) : null}
         </div>

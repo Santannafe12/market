@@ -68,9 +68,14 @@ export function AppLayout() {
                   Painel
                 </NavLink>
               ) : (
-                <NavLink to="/carteira" className={navClass}>
-                  Carteira
-                </NavLink>
+                <>
+                  <NavLink to="/carteira" className={navClass}>
+                    Carteira
+                  </NavLink>
+                  <NavLink to="/arremates" className={navClass}>
+                    Meus arremates
+                  </NavLink>
+                </>
               )}
               <NavLink to="/sessao" className={navClass}>
                 Conta

@@ -4,6 +4,7 @@ import { PrismaClient, Role } from '@prisma/client';
 import request from 'supertest';
 import { AUDIT_KEY_VERSION, verifyAuction } from '../src/audit/audit';
 import { AppModule } from '../src/app.module';
+import { SettlementService } from '../src/settlement/settlement.service';
 import { CATALOG_FETCH, CatalogClient } from '../src/catalog/catalog.client';
 import { MONEY_MAX_CENTS } from '../src/common/money';
 import { validateEnv } from '../src/config/env';
@@ -390,7 +391,7 @@ describe('Auctions HTTP', () => {
     expect(after.version).toBe(before.version);
   });
 
-  it('refuses to cancel a lot with bids or a lot whose seller was swapped, and does not rewrite the anchor', async () => {
+  it('refuses a forged bid counter and a swapped seller without rewriting the anchor', async () => {
     const owner = await register(Role.SELLER, 'helena@example.com');
     const other = await register(Role.SELLER, 'outro@example.com');
     const bidder = await register(Role.BIDDER, 'bruno@example.com');
@@ -413,7 +414,7 @@ describe('Auctions HTTP', () => {
       .post(`/api/auctions/${id}/cancel`)
       .set(auth(owner.accessToken));
     expect(withBids.status).toBe(422);
-    expect(withBids.body.code).toBe('CANCEL_HAS_BIDS');
+    expect(withBids.body.code).toBe('AUCTION_INTEGRITY');
     const afterBids = await prisma.auction.findUniqueOrThrow({ where: { id } });
     expect(afterBids.status).toBe('OPEN');
     expect(afterBids.bidCount).toBe(1);
@@ -585,6 +586,118 @@ describe('Auctions HTTP', () => {
     expect(publishedJson).not.toContain(seller.user.email);
     expect(publishedJson).not.toContain('Helena Vendedora');
     expect(publishedJson).not.toContain('Bruno Licitante');
+  });
+
+  it('settles the winning bid, shares the receipt, and keeps the audit intact', async () => {
+    const seller = await register(Role.SELLER, 'helena.liquidacao@example.com');
+    const ana = await register(Role.BIDDER, 'ana.liquidacao@example.com');
+    const bruno = await register(Role.BIDDER, 'bruno.liquidacao@example.com');
+    const created = await request(app.getHttpServer())
+      .post('/api/auctions')
+      .set(auth(seller.accessToken))
+      .send(createBody());
+    expect(created.status).toBe(201);
+    const auctionId = created.body.id as string;
+
+    expect(
+      (
+        await request(app.getHttpServer())
+          .post('/api/wallet/deposits')
+          .set(auth(ana.accessToken))
+          .send({ amountCents: 10_000 })
+      ).status,
+    ).toBe(201);
+    expect(
+      (
+        await request(app.getHttpServer())
+          .post('/api/wallet/deposits')
+          .set(auth(bruno.accessToken))
+          .send({ amountCents: 10_000 })
+      ).status,
+    ).toBe(201);
+    expect(
+      (
+        await request(app.getHttpServer())
+          .post(`/api/auctions/${auctionId}/bids`)
+          .set(auth(ana.accessToken))
+          .send({ amountCents: 1500 })
+      ).status,
+    ).toBe(201);
+    expect(
+      (
+        await request(app.getHttpServer())
+          .post(`/api/auctions/${auctionId}/bids`)
+          .set(auth(bruno.accessToken))
+          .send({ amountCents: 1600 })
+      ).status,
+    ).toBe(201);
+
+    const settlement = app.get(SettlementService);
+    expect((await settlement.markEnded(auctionId)).outcome).toBe('ENDED');
+    expect((await settlement.finalizeAuction(auctionId)).outcome).toBe('SETTLED');
+    expect((await settlement.finalizeAuction(auctionId)).outcome).toBe('ALREADY_FINAL');
+
+    const winner = await request(app.getHttpServer())
+      .get('/api/me/participations')
+      .set(auth(bruno.accessToken));
+    expect(winner.status).toBe(200);
+    expect(winner.body).toHaveLength(1);
+    expect(winner.body[0].result).toBe('WON');
+    expect(winner.body[0].auction.status).toBe('SETTLED');
+    const token = winner.body[0].receiptToken as string;
+    expect(token).toEqual(expect.any(String));
+
+    const loser = await request(app.getHttpServer())
+      .get('/api/me/participations')
+      .set(auth(ana.accessToken));
+    expect(loser.body).toHaveLength(1);
+    expect(loser.body[0].result).toBe('LOST');
+    expect(loser.body[0].receiptToken).toBeNull();
+
+    const receipt = await request(app.getHttpServer()).get(`/api/receipts/${token}`);
+    expect(receipt.status).toBe(200);
+    expect(receipt.body).toMatchObject({
+      publicToken: token,
+      auctionId,
+      amountCents: 1600,
+      winnerPublicId: bruno.user.publicId,
+      sellerPublicId: seller.user.publicId,
+      title: created.body.title,
+    });
+    const receiptJson = JSON.stringify(receipt.body);
+    for (const hidden of [ana.user.id, bruno.user.id, seller.user.id, ana.user.email, bruno.user.email, seller.user.email, 'Helena Vendedora', 'Bruno Licitante']) {
+      expect(receiptJson).not.toContain(hidden);
+    }
+
+    const published = await request(app.getHttpServer()).get(`/api/auctions/${auctionId}/audit`);
+    expect(published.status).toBe(200);
+    expect(published.body.verdict).toBe('INTEGRO');
+    expect(published.body.bids).toHaveLength(2);
+    expect(await anchor(auctionId)).toBe('INTEGRO');
+
+    const received = await request(app.getHttpServer())
+      .get('/api/auctions/received')
+      .set(auth(seller.accessToken));
+    expect(received.status).toBe(200);
+    expect(received.body).toEqual({ receivedCents: 1600 });
+
+    const mine = await request(app.getHttpServer()).get('/api/auctions/mine').set(auth(seller.accessToken));
+    expect(mine.body[0].status).toBe('SETTLED');
+    const ended = await request(app.getHttpServer())
+      .get('/api/auctions?status=ended')
+      .set(auth(ana.accessToken));
+    const live = await request(app.getHttpServer())
+      .get('/api/auctions?status=live')
+      .set(auth(ana.accessToken));
+    expect(ended.body.map((auction: { id: string }) => auction.id)).toContain(auctionId);
+    expect(live.body.map((auction: { id: string }) => auction.id)).not.toContain(auctionId);
+
+    const late = await request(app.getHttpServer())
+      .post(`/api/auctions/${auctionId}/bids`)
+      .set(auth(ana.accessToken))
+      .send({ amountCents: 1700 });
+    expect(late.status).toBe(422);
+    expect(late.body.code).toBe('AUCTION_ENDED');
   });
 });
 

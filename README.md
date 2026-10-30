@@ -25,6 +25,7 @@ No PowerShell o comando é o mesmo `copy`. As variáveis obrigatórias são:
 | `AUDIT_HMAC_SECRET` | Segredo da âncora do lote. Pelo menos 32 caracteres e diferente de `JWT_SECRET`. A API não sobe sem ele |
 | `WEB_ORIGIN` | Origem permitida no CORS. Em desenvolvimento: `http://localhost:5173` |
 | `PORT` | Porta da API. O padrão é `3000` |
+| `SETTLEMENT_INTERVAL_MS` | Intervalo do ciclo que liquida lotes vencidos. O padrão é `5000`. O atraso máximo é um intervalo |
 
 O arquivo `.env.example` traz valores só para a máquina local. Troque `JWT_SECRET` e `AUDIT_HMAC_SECRET` antes de qualquer ambiente compartilhado. Os dois segredos precisam ser diferentes.
 
@@ -104,4 +105,6 @@ No PowerShell, a variável é `$env:OPEN_LIBRARY_LIVE=1`.
 ## Limitações desta etapa
 
 - A lista de edições para em 20. Data, ISBN e capa da Open Library variam bastante; um lote pode nascer sem algum desses dados.
-- Ainda não há depósito, lance, comprovante, auditoria pública, tempo real, seed nem deploy.
+- A liquidação roda na própria API, cerca de a cada 5 segundos (`SETTLEMENT_INTERVAL_MS`). Um lote pode ficar encerrado e ainda aberto por até um intervalo. Reiniciar o processo não perde esse lote: o próximo ciclo relê o banco.
+- Cancelar um lote com lances, antes da liquidação, libera o saldo comprometido do líder. O total da carteira não aumenta.
+- Ainda não há tempo real, seed demonstrável, busca avançada, dark mode nem deploy.

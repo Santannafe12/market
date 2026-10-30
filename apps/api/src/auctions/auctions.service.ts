@@ -1,24 +1,35 @@
 import { randomUUID } from 'crypto';
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { Prisma, Role } from '@prisma/client';
 import { AuditService } from '../audit/audit.service';
 import { auditIdentities } from '../audit/audit';
 import { CatalogClient, CatalogRequestError, catalogHttpError } from '../catalog/catalog.client';
 import { DomainError } from '../common/domain-error';
+import { DomainEvents } from '../common/domain-events';
 import { PrismaService } from '../prisma/prisma.service';
+import { lockAuction } from '../wallet/wallet.sql';
 import { auctionViewSelect, toPublicAuction } from './auction.presenter';
 import { CreateAuctionDto } from './dto/create-auction.dto';
 import { ListAuctionsQueryDto } from './dto/list-auctions.dto';
 
+const TX_LOCK_TIMEOUT = '25s';
 const UUID_PATTERN =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
 @Injectable()
 export class AuctionsService {
+  private readonly logger = new Logger(AuctionsService.name);
+  /**
+   * Test seam. Runs inside the audit snapshot, after the lot is read and before
+   * bids and identities. Production leaves it unset.
+   */
+  auditSnapshotGap: (() => Promise<void>) | null = null;
+
   constructor(
     private readonly prisma: PrismaService,
     private readonly catalog: CatalogClient,
     private readonly audit: AuditService,
+    private readonly events: DomainEvents,
   ) {}
 
   async list(status: ListAuctionsQueryDto['status']) {
@@ -28,7 +39,12 @@ export class AuctionsService {
         ? { status: 'OPEN', startsAt: { lte: now }, endsAt: { gt: now } }
         : status === 'scheduled'
           ? { status: 'OPEN', startsAt: { gt: now } }
-          : { status: 'OPEN', endsAt: { lte: now } };
+          : {
+              OR: [
+                { status: 'OPEN', endsAt: { lte: now } },
+                { status: { in: ['SETTLED', 'UNSOLD'] } },
+              ],
+            };
     const rows = await this.prisma.auction.findMany({
       where,
       orderBy: status === 'ended' ? { endsAt: 'desc' } : status === 'scheduled' ? { startsAt: 'asc' } : { endsAt: 'asc' },
@@ -62,29 +78,46 @@ export class AuctionsService {
     if (!isUuid(id)) {
       throw new DomainError('AUCTION_NOT_FOUND', 404, 'Lote não encontrado.');
     }
-    const row = await this.prisma.auction.findUnique({ where: { id }, select: auctionViewSelect });
-    if (!row) {
+    const snapshot = await this.prisma.$transaction(
+      async (tx) => {
+        const row = await tx.auction.findUnique({ where: { id }, select: auctionViewSelect });
+        if (!row) {
+          return null;
+        }
+        if (this.auditSnapshotGap) {
+          await this.auditSnapshotGap();
+        }
+        const bids = await tx.bid.findMany({
+          where: { auctionId: id },
+          orderBy: { sequence: 'asc' },
+        });
+        const referenced = new Set<string>([row.sellerId, ...bids.map((bid) => bid.bidderId)]);
+        if (row.currentLeaderId) {
+          referenced.add(row.currentLeaderId);
+        }
+        const users = await tx.user.findMany({
+          where: { id: { in: [...referenced] } },
+          select: { id: true, publicId: true },
+        });
+        const now = await this.databaseNow(tx);
+        const report = this.audit.report(row, bids, auditIdentities(row.sellerId, users));
+        return {
+          verdict: report.verdict,
+          failures: report.failures,
+          auction: toPublicAuction(row, now),
+          bids: bids.map(toAuditBid),
+        };
+      },
+      {
+        isolationLevel: Prisma.TransactionIsolationLevel.RepeatableRead,
+        maxWait: 5_000,
+        timeout: 15_000,
+      },
+    );
+    if (!snapshot) {
       throw new DomainError('AUCTION_NOT_FOUND', 404, 'Lote não encontrado.');
     }
-    const bids = await this.prisma.bid.findMany({
-      where: { auctionId: id },
-      orderBy: { sequence: 'asc' },
-    });
-    const referenced = new Set<string>([row.sellerId, ...bids.map((bid) => bid.bidderId)]);
-    if (row.currentLeaderId) {
-      referenced.add(row.currentLeaderId);
-    }
-    const users = await this.prisma.user.findMany({
-      where: { id: { in: [...referenced] } },
-      select: { id: true, publicId: true },
-    });
-    const { verdict, failures } = this.audit.report(row, bids, auditIdentities(row.sellerId, users));
-    return {
-      verdict,
-      failures,
-      auction: toPublicAuction(row, await this.databaseNow(this.prisma)),
-      bids: bids.map(toAuditBid),
-    };
+    return snapshot;
   }
 
   async cover(id: string) {
@@ -190,75 +223,107 @@ export class AuctionsService {
       throw new DomainError('AUCTION_NOT_FOUND', 404, 'Lote não encontrado.');
     }
 
-    return this.prisma.$transaction(async (tx) => {
-      const locked = await tx.$queryRaw<Array<{ id: string }>>`
-        SELECT id FROM "Auction" WHERE id = CAST(${id} AS uuid) FOR UPDATE
-      `;
-      if (locked.length === 0) {
-        throw new DomainError('AUCTION_NOT_FOUND', 404, 'Lote não encontrado.');
-      }
+    const outcome = await this.prisma.$transaction(
+      async (tx) => {
+        await tx.$queryRaw(Prisma.sql`SELECT set_config('lock_timeout', ${TX_LOCK_TIMEOUT}, true)`);
+        if (!(await lockAuction(tx, id))) {
+          throw new DomainError('AUCTION_NOT_FOUND', 404, 'Lote não encontrado.');
+        }
 
-      const current = await tx.auction.findUniqueOrThrow({
-        where: { id },
-        select: auctionViewSelect,
-      });
-      if (current.sellerId !== sellerId) {
-        throw new DomainError('FORBIDDEN', 403, 'Você só pode gerenciar os próprios lotes.');
-      }
-      if (current.status !== 'OPEN') {
-        throw new DomainError('AUCTION_NOT_OPEN', 422, 'Só é possível cancelar um lote aberto.');
-      }
-      if (current.bidCount > 0) {
-        throw new DomainError(
-          'CANCEL_HAS_BIDS',
-          422,
-          'Este lote já recebeu lances e não pode ser cancelado.',
-        );
-      }
-      const seller = await tx.user.findUnique({
-        where: { id: current.sellerId },
-        select: { id: true, publicId: true },
-      });
-      if (this.audit.verify(current, [], auditIdentities(current.sellerId, seller ? [seller] : [])) !== 'INTEGRO') {
-        throw new DomainError(
-          'AUCTION_INTEGRITY',
-          422,
-          'A integridade do lote não confere. A operação foi recusada.',
-        );
-      }
+        const current = await tx.auction.findUniqueOrThrow({
+          where: { id },
+          select: auctionViewSelect,
+        });
+        if (current.sellerId !== sellerId) {
+          throw new DomainError('FORBIDDEN', 403, 'Você só pode gerenciar os próprios lotes.');
+        }
+        if (current.status === 'SETTLED' || current.status === 'UNSOLD') {
+          throw new DomainError(
+            'ALREADY_FINAL',
+            422,
+            'Este lote já foi encerrado e não pode ser cancelado.',
+          );
+        }
+        if (current.status !== 'OPEN') {
+          throw new DomainError('AUCTION_NOT_OPEN', 422, 'Só é possível cancelar um lote aberto.');
+        }
 
-      const version = current.version + 1;
-      const auditStateMac = this.audit.stateMac({
-        version,
-        auctionId: current.id,
-        status: 'CANCELLED',
-        sellerId: current.sellerId,
-        sellerPublicId: current.sellerPublicId,
-        bidCount: current.bidCount,
-        currentBidCents: current.currentBidCents,
-        currentLeaderId: current.currentLeaderId,
-        currentLeaderPublicId: current.currentLeaderPublicId,
-        startsAt: current.startsAt,
-        originalEndsAt: current.originalEndsAt,
-        endsAt: current.endsAt,
-        auditHeadHash: current.auditHeadHash,
-        keyVersion: current.auditKeyVersion,
-      });
-      const updated = await tx.auction.updateMany({
-        where: { id: current.id, version: current.version, status: 'OPEN', bidCount: 0 },
-        data: { status: 'CANCELLED', version, auditStateMac },
-      });
-      if (updated.count !== 1) {
-        throw new DomainError(
-          'CONFLICT_RETRY_EXHAUSTED',
-          409,
-          'Não foi possível cancelar o lote. Tente de novo.',
-        );
-      }
+        const bids = await tx.bid.findMany({
+          where: { auctionId: id },
+          orderBy: { sequence: 'asc' },
+        });
+        const referenced = new Set<string>([current.sellerId, ...bids.map((bid) => bid.bidderId)]);
+        if (current.currentLeaderId) {
+          referenced.add(current.currentLeaderId);
+        }
+        const users = await tx.user.findMany({
+          where: { id: { in: [...referenced] } },
+          select: { id: true, publicId: true },
+        });
+        if (this.audit.verify(current, bids, auditIdentities(current.sellerId, users)) !== 'INTEGRO') {
+          throw new DomainError(
+            'AUCTION_INTEGRITY',
+            422,
+            'A integridade do lote não confere. A operação foi recusada.',
+          );
+        }
 
-      const saved = await tx.auction.findUniqueOrThrow({ where: { id }, select: auctionViewSelect });
-      return toPublicAuction(saved, await this.databaseNow(tx));
-    });
+        const version = current.version + 1;
+        const auditStateMac = this.audit.stateMac({
+          version,
+          auctionId: current.id,
+          status: 'CANCELLED',
+          sellerId: current.sellerId,
+          sellerPublicId: current.sellerPublicId,
+          bidCount: current.bidCount,
+          currentBidCents: current.currentBidCents,
+          currentLeaderId: current.currentLeaderId,
+          currentLeaderPublicId: current.currentLeaderPublicId,
+          startsAt: current.startsAt,
+          originalEndsAt: current.originalEndsAt,
+          endsAt: current.endsAt,
+          auditHeadHash: current.auditHeadHash,
+          keyVersion: current.auditKeyVersion,
+        });
+        const updated = await tx.auction.updateMany({
+          where: { id: current.id, version: current.version, status: 'OPEN' },
+          data: { status: 'CANCELLED', version, auditStateMac },
+        });
+        if (updated.count !== 1) {
+          throw new DomainError(
+            'CONFLICT_RETRY_EXHAUSTED',
+            409,
+            'Não foi possível cancelar o lote. Tente de novo.',
+          );
+        }
+
+        const saved = await tx.auction.findUniqueOrThrow({ where: { id }, select: auctionViewSelect });
+        return {
+          auction: toPublicAuction(saved, await this.databaseNow(tx)),
+          leaderId: current.currentLeaderId,
+        };
+      },
+      {
+        isolationLevel: Prisma.TransactionIsolationLevel.ReadCommitted,
+        maxWait: 5_000,
+        timeout: 30_000,
+      },
+    );
+
+    this.publish(id, outcome.leaderId ? [outcome.leaderId] : []);
+    return outcome.auction;
+  }
+
+  private publish(auctionId: string, walletUserIds: string[]) {
+    try {
+      this.events.auctionChanged(auctionId);
+      for (const userId of walletUserIds) {
+        this.events.walletHint(userId);
+      }
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'erro desconhecido';
+      this.logger.error(`Falha ao publicar evento de cancelamento: ${message}`);
+    }
   }
 
   private async snapshot(editionId: string) {

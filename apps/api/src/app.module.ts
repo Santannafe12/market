@@ -8,6 +8,7 @@ import { CatalogModule } from './catalog/catalog.module';
 import { DomainEventsModule } from './common/domain-events.module';
 import { validateEnv } from './config/env';
 import { PrismaModule } from './prisma/prisma.module';
+import { SettlementModule } from './settlement/settlement.module';
 import { WalletModule } from './wallet/wallet.module';
 
 @Module({
@@ -25,6 +26,7 @@ import { WalletModule } from './wallet/wallet.module';
     AuctionsModule,
     WalletModule,
     BiddingModule,
+    SettlementModule,
   ],
 })
 export class AppModule {}

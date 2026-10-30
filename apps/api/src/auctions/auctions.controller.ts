@@ -17,19 +17,30 @@ import { AccessTokenPayload } from '../auth/jwt.strategy';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { Roles } from '../auth/roles.decorator';
 import { RolesGuard } from '../auth/roles.guard';
+import { SettlementService } from '../settlement/settlement.service';
 import { AuctionsService } from './auctions.service';
 import { CreateAuctionDto } from './dto/create-auction.dto';
 import { ListAuctionsQueryDto } from './dto/list-auctions.dto';
 
 @Controller('auctions')
 export class AuctionsController {
-  constructor(private readonly auctions: AuctionsService) {}
+  constructor(
+    private readonly auctions: AuctionsService,
+    private readonly settlement: SettlementService,
+  ) {}
 
   @Get('mine')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(Role.SELLER)
   mine(@Req() request: { user: AccessTokenPayload }) {
     return this.auctions.mine(request.user.sub);
+  }
+
+  @Get('received')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(Role.SELLER)
+  received(@Req() request: { user: AccessTokenPayload }) {
+    return this.settlement.receivedBySeller(request.user.sub);
   }
 
   @Get()

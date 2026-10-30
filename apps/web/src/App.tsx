@@ -6,6 +6,8 @@ import { AuctionDetailPage } from '@/pages/AuctionDetailPage';
 import { AuditPage } from '@/pages/AuditPage';
 import { LoginPage } from '@/pages/LoginPage';
 import { RegisterPage } from '@/pages/RegisterPage';
+import { ParticipationsPage } from '@/pages/ParticipationsPage';
+import { ReceiptPage } from '@/pages/ReceiptPage';
 import { SellerPanelPage } from '@/pages/SellerPanelPage';
 import { SessionPage } from '@/pages/SessionPage';
 import { ShowcasePage } from '@/pages/ShowcasePage';
@@ -25,6 +27,7 @@ export function App() {
           <Route path="/entrar" element={<LoginPage />} />
           <Route path="/cadastro" element={<RegisterPage />} />
           <Route path="/auditoria/:auctionId" element={<AuditPage />} />
+          <Route path="/comprovantes/:token" element={<ReceiptPage />} />
           <Route
             element={
               <RequireAuth>
@@ -37,6 +40,7 @@ export function App() {
             <Route path="/painel" element={<SellerPanelPage />} />
             <Route path="/sessao" element={<SessionPage />} />
             <Route path="/carteira" element={<WalletPage />} />
+            <Route path="/arremates" element={<ParticipationsPage />} />
           </Route>
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>

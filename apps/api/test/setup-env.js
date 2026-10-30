@@ -18,3 +18,5 @@ if (
 }
 process.env.WEB_ORIGIN = process.env.WEB_ORIGIN ?? 'http://localhost:5173';
 process.env.PORT = process.env.PORT ?? '3000';
+// The suite calls settlement directly. A live 5s tick would close lots the other tests still hold open.
+process.env.SETTLEMENT_INTERVAL_MS = '3600000';

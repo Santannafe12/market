@@ -99,8 +99,11 @@ export class BiddingService {
     if (!user) {
       throw new DomainError('UNAUTHORIZED', 401, 'Sessão inválida.');
     }
-    if (auction.status !== 'OPEN') {
+    if (auction.status === 'CANCELLED') {
       throw new DomainError('AUCTION_CANCELLED', 422, 'Este lote foi cancelado.');
+    }
+    if (auction.status !== 'OPEN') {
+      throw new DomainError('AUCTION_ENDED', 422, 'Este lote já encerrou.');
     }
     if (user.role === Role.SELLER || user.id === auction.sellerId) {
       throw new DomainError('SELLER_CANNOT_BID', 403, 'O leiloeiro não pode dar lances.');

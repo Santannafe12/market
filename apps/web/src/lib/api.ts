@@ -108,7 +108,7 @@ export type DisplayStatus = 'live' | 'scheduled' | 'ended' | 'cancelled';
 export type PublicAuction = {
   id: string;
   sellerPublicId: string;
-  status: 'OPEN' | 'CANCELLED';
+  status: 'OPEN' | 'CANCELLED' | 'SETTLED' | 'UNSOLD';
   displayStatus: DisplayStatus;
   startingBidCents: number;
   minIncrementCents: number;
@@ -272,6 +272,36 @@ export type AuditReport = {
 
 export function getAudit(auctionId: string) {
   return request<AuditReport>(`/api/auctions/${auctionId}/audit`);
+}
+
+export type ParticipationResult = 'LEADING' | 'OUTBID' | 'WON' | 'LOST' | 'CANCELLED';
+
+export type Participation = {
+  result: ParticipationResult;
+  receiptToken: string | null;
+  auction: PublicAuction;
+};
+
+export type PublicReceipt = {
+  publicToken: string;
+  auctionId: string;
+  title: string;
+  amountCents: number;
+  winnerPublicId: string;
+  sellerPublicId: string;
+  createdAt: string;
+};
+
+export function participations() {
+  return request<Participation[]>('/api/me/participations', { method: 'GET' }, true);
+}
+
+export function getReceipt(publicToken: string) {
+  return request<PublicReceipt>(`/api/receipts/${encodeURIComponent(publicToken)}`);
+}
+
+export function sellerReceived() {
+  return request<{ receivedCents: number }>('/api/auctions/received', { method: 'GET' }, true);
 }
 
 export function roleLabel(role: Role) {

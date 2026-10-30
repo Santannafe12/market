@@ -4,6 +4,8 @@ import { Test } from '@nestjs/testing';
 import { PrismaClient, Role } from '@prisma/client';
 import request from 'supertest';
 import { AppModule } from '../src/app.module';
+import { AuctionsModule } from '../src/auctions/auctions.module';
+import { AuctionsService } from '../src/auctions/auctions.service';
 import { AUDIT_KEY_VERSION, auditHmac, canonicalGenesis, canonicalState } from '../src/audit/audit';
 import { validateEnv } from '../src/config/env';
 import { configureApp } from '../src/configure-app';
@@ -215,6 +217,37 @@ describe('public audit', () => {
     const restored = await audit(lot);
     expect(restored.body.verdict).toBe('INTEGRO');
     expect(restored.body.failures).toEqual([]);
+  });
+
+  it('stays intact when a bid commits while the audit snapshot is open', async () => {
+    const seller = await register(Role.SELLER, 'Helena Auditora', 'helena.snapshot@example.com');
+    const ana = await register(Role.BIDDER, 'Ana Marcadora', 'ana.snapshot@example.com');
+    await deposit(ana.accessToken, 5_000);
+    const auctionId = await insertAuction(seller.user, await liveWindow(2 * 60 * 60_000));
+    const auctions = app.select(AuctionsModule).get(AuctionsService);
+    auctions.auditSnapshotGap = async () => {
+      expect((await bid(ana.accessToken, auctionId, 1_000)).status).toBe(201);
+    };
+    try {
+      const during = await audit(auctionId);
+      expect(during.status).toBe(200);
+      expect(during.body.verdict).toBe('INTEGRO');
+      expect(during.body.failures).toEqual([]);
+      expect(during.body.bids).toEqual([]);
+      expect(during.body.auction.bidCount).toBe(0);
+      expect(await prisma.bid.count({ where: { auctionId } })).toBe(1);
+    } finally {
+      auctions.auditSnapshotGap = null;
+    }
+    const after = await audit(auctionId);
+    expect(after.body.verdict).toBe('INTEGRO');
+    expect(after.body.bids).toHaveLength(1);
+    expect(after.body.bids[0]).toMatchObject({
+      bidderPublicId: ana.user.publicId,
+      amountCents: 1_000,
+    });
+    expect(JSON.stringify(after.body)).not.toContain(ana.user.id);
+    expect(JSON.stringify(after.body)).not.toContain(ana.user.email);
   });
 });
 
