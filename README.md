@@ -2,8 +2,8 @@
 
 Casa de leilões do desafio Elite Dev / Verzel: API NestJS, PostgreSQL e um frontend em React. Leiloeiros publicam livros buscados na Open Library; licitantes depositam saldo simulado e dão lances ao vivo; o vencedor recebe um comprovante público, e qualquer pessoa audita o histórico de lances.
 
-- Frontend: `https://elite-leiloes-web-three.vercel.app/` (preencher após o deploy)
-- API: `https://market-six-zeta.vercel.app/` (preencher após o deploy)
+- Frontend: `https://elite-leiloes-web-three.vercel.app/`
+- API: `https://market-six-zeta.vercel.app/`
 
 ## Funcionalidades
 
