@@ -1,0 +1,9 @@
+.git
+node_modules
+**/node_modules
+**/dist
+apps/web
+coverage
+*.md
+.cursor
+docs

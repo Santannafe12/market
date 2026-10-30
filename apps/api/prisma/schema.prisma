@@ -1,0 +1,32 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  SELLER
+  BIDDER
+}
+
+model User {
+  id           String   @id @default(uuid()) @db.Uuid
+  publicId     String   @unique
+  name         String
+  email        String   @unique
+  passwordHash String
+  role         Role
+  createdAt    DateTime @default(now())
+  wallet       Wallet?
+}
+
+model Wallet {
+  id           String @id @default(uuid()) @db.Uuid
+  userId       String @unique @db.Uuid
+  user         User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  /// SQL CHECK in the init migration: 0 <= balanceCents <= 2000000000 (MONEY_MAX_CENTS).
+  balanceCents Int    @default(0)
+}

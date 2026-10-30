@@ -1,0 +1,13 @@
+node_modules/
+dist/
+coverage/
+.env
+.env.local
+apps/web/.env
+*.tsbuildinfo
+.prisma/
+apps/api/prisma/*.db
+.DS_Store
+Thumbs.
+docs
+.cursor/
