@@ -4,7 +4,10 @@ import {
   AUDIT_KEY_VERSION,
   AuctionAuditRow,
   AuctionStateInput,
+  BidCanonicalInput,
+  BidChainInput,
   auditHmac,
+  canonicalBid,
   canonicalGenesis,
   canonicalState,
   verifyAuction,
@@ -27,7 +30,11 @@ export class AuditService {
     return auditHmac(this.secret, canonicalState(state));
   }
 
-  verify(row: AuctionAuditRow) {
-    return verifyAuction(row, new Map([[this.keyVersion, this.secret]]));
+  bidHash(bid: BidCanonicalInput) {
+    return auditHmac(this.secret, canonicalBid(bid));
+  }
+
+  verify(row: AuctionAuditRow, bids: readonly BidChainInput[] = []) {
+    return verifyAuction(row, new Map([[this.keyVersion, this.secret]]), bids);
   }
 }

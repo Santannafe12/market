@@ -39,8 +39,37 @@ export type AuctionAuditRow = {
   auditKeyVersion: number;
 };
 
+export type BidCanonicalInput = {
+  auctionId: string;
+  sequence: number;
+  bidderId: string;
+  bidderPublicId: string;
+  amountCents: number;
+  previousHash: string;
+  endsAtAfter: Date;
+  createdAt: Date;
+};
+
+export type BidChainInput = BidCanonicalInput & {
+  hash: string;
+};
+
 export function canonicalGenesis(auctionId: string) {
   return ['canonicalVersion=1', 'kind=genesis', `auctionId=${auctionId}`].join('\n');
+}
+
+export function canonicalBid(bid: BidCanonicalInput) {
+  return [
+    'kind=bid',
+    `auctionId=${bid.auctionId}`,
+    `sequence=${bid.sequence}`,
+    `bidderId=${bid.bidderId}`,
+    `bidderPublicId=${bid.bidderPublicId}`,
+    `amountCents=${bid.amountCents}`,
+    `previousHash=${bid.previousHash}`,
+    `endsAtAfter=${formatAuditInstant(bid.endsAtAfter)}`,
+    `createdAt=${formatAuditInstant(bid.createdAt)}`,
+  ].join('\n');
 }
 
 export function canonicalState(state: AuctionStateInput) {
@@ -67,21 +96,25 @@ export function auditHmac(secret: string, canonical: string) {
   return createHmac('sha256', secret).update(canonical, 'utf8').digest('hex');
 }
 
-export function verifyAuction(row: AuctionAuditRow, keys: ReadonlyMap<number, string>): AuditVerdict {
+export function verifyAuction(
+  row: AuctionAuditRow,
+  keys: ReadonlyMap<number, string>,
+  bids: readonly BidChainInput[] = [],
+): AuditVerdict {
   const secret = keys.get(row.auditKeyVersion);
   if (!secret) {
     return 'INDETERMINADO';
   }
 
-  const head = auditHmac(secret, canonicalGenesis(row.id));
-  if (!macEqual(head, row.auditHeadHash)) {
-    return 'ADULTERADO';
-  }
-
-  if (
-    row.bidCount === 0 &&
-    (row.currentBidCents !== null || row.currentLeaderId !== null || row.currentLeaderPublicId !== null)
-  ) {
+  const genesis = auditHmac(secret, canonicalGenesis(row.id));
+  if (row.bidCount === 0) {
+    if (!macEqual(genesis, row.auditHeadHash) || bids.length > 0) {
+      return 'ADULTERADO';
+    }
+    if (row.currentBidCents !== null || row.currentLeaderId !== null || row.currentLeaderPublicId !== null) {
+      return 'ADULTERADO';
+    }
+  } else if (!bidChainIntact(row, secret, genesis, bids)) {
     return 'ADULTERADO';
   }
 
@@ -110,6 +143,42 @@ export function verifyAuction(row: AuctionAuditRow, keys: ReadonlyMap<number, st
   }
 
   return 'INTEGRO';
+}
+
+function bidChainIntact(
+  row: AuctionAuditRow,
+  secret: string,
+  genesis: string,
+  bids: readonly BidChainInput[],
+) {
+  if (bids.length !== row.bidCount) {
+    return false;
+  }
+
+  const ordered = [...bids].sort((left, right) => left.sequence - right.sequence);
+  let previous = genesis;
+  for (let index = 0; index < ordered.length; index += 1) {
+    const bid = ordered[index];
+    if (bid.auctionId !== row.id || bid.sequence !== index + 1 || bid.previousHash !== previous) {
+      return false;
+    }
+    const hash = auditHmac(secret, canonicalBid(bid));
+    if (!macEqual(hash, bid.hash)) {
+      return false;
+    }
+    previous = bid.hash;
+  }
+
+  const last = ordered[ordered.length - 1];
+  if (!last) {
+    return false;
+  }
+  return (
+    macEqual(previous, row.auditHeadHash) &&
+    last.amountCents === row.currentBidCents &&
+    last.bidderId === row.currentLeaderId &&
+    last.bidderPublicId === row.currentLeaderPublicId
+  );
 }
 
 function formatAuditInstant(value: Date) {

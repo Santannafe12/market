@@ -1,5 +1,6 @@
 import {
   auditHmac,
+  canonicalBid,
   canonicalGenesis,
   canonicalState,
   verifyAuction,
@@ -102,5 +103,72 @@ describe('audit anchor', () => {
         keys,
       ),
     ).toBe('ADULTERADO');
+  });
+
+  it('chains a bid from the genesis head and rejects a swapped leader without rewriting the anchor', () => {
+    const bidderId = '33333333-3333-4333-8333-333333333333';
+    const createdAt = new Date('2026-01-02T04:03:06.007Z');
+    const endsAtAfter = new Date('2026-01-02T04:07:06.007Z');
+    const genesis = auditHmac(secret, canonicalGenesis(auctionId));
+    const bid = {
+      auctionId,
+      sequence: 1,
+      bidderId,
+      bidderPublicId: 'ANA',
+      amountCents: 4000,
+      previousHash: genesis,
+      endsAtAfter,
+      createdAt,
+    };
+    const canonical = canonicalBid(bid);
+    expect(canonical).toBe(
+      [
+        'kind=bid',
+        `auctionId=${auctionId}`,
+        'sequence=1',
+        `bidderId=${bidderId}`,
+        'bidderPublicId=ANA',
+        'amountCents=4000',
+        `previousHash=${genesis}`,
+        'endsAtAfter=2026-01-02T04:07:06.007Z',
+        'createdAt=2026-01-02T04:03:06.007Z',
+      ].join('\n'),
+    );
+    expect(canonical.endsWith('\n')).toBe(false);
+
+    const hash = auditHmac(secret, canonical);
+    const current = {
+      ...state(),
+      version: 1,
+      bidCount: 1,
+      currentBidCents: 4000,
+      currentLeaderId: bidderId,
+      currentLeaderPublicId: 'ANA',
+      endsAt: endsAtAfter,
+      auditHeadHash: hash,
+    };
+    const row = {
+      id: auctionId,
+      version: current.version,
+      status: current.status,
+      sellerId: current.sellerId,
+      sellerPublicId: current.sellerPublicId,
+      bidCount: current.bidCount,
+      currentBidCents: current.currentBidCents,
+      currentLeaderId: current.currentLeaderId,
+      currentLeaderPublicId: current.currentLeaderPublicId,
+      startsAt: current.startsAt,
+      originalEndsAt: current.originalEndsAt,
+      endsAt: current.endsAt,
+      auditHeadHash: hash,
+      auditStateMac: auditHmac(secret, canonicalState(current)),
+      auditKeyVersion: 1,
+    };
+    const keys = new Map([[1, secret]]);
+    const signed = [{ ...bid, hash }];
+    expect(verifyAuction(row, keys, signed)).toBe('INTEGRO');
+    const tampered = { ...row, currentLeaderId: sellerId };
+    expect(verifyAuction(tampered, keys, signed)).toBe('ADULTERADO');
+    expect(tampered.auditHeadHash).toBe(hash);
   });
 });

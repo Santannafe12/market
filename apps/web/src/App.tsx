@@ -8,6 +8,7 @@ import { RegisterPage } from '@/pages/RegisterPage';
 import { SellerPanelPage } from '@/pages/SellerPanelPage';
 import { SessionPage } from '@/pages/SessionPage';
 import { ShowcasePage } from '@/pages/ShowcasePage';
+import { WalletPage } from '@/pages/WalletPage';
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -33,6 +34,7 @@ export function App() {
             <Route path="/lotes/:auctionId" element={<AuctionDetailPage />} />
             <Route path="/painel" element={<SellerPanelPage />} />
             <Route path="/sessao" element={<SessionPage />} />
+            <Route path="/carteira" element={<WalletPage />} />
           </Route>
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>

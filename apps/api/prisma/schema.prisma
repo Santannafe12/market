@@ -12,6 +12,10 @@ enum Role {
   BIDDER
 }
 
+enum WalletEntryType {
+  DEPOSIT
+}
+
 model User {
   id           String   @id @default(uuid()) @db.Uuid
   publicId     String   @unique
@@ -22,14 +26,30 @@ model User {
   createdAt    DateTime @default(now())
   wallet       Wallet?
   auctions     Auction[]
+  bids         Bid[]
 }
 
 model Wallet {
-  id           String @id @default(uuid()) @db.Uuid
-  userId       String @unique @db.Uuid
-  user         User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id           String         @id @default(uuid()) @db.Uuid
+  userId       String         @unique @db.Uuid
+  user         User           @relation(fields: [userId], references: [id], onDelete: Cascade)
   /// SQL CHECK in the init migration: 0 <= balanceCents <= 2000000000 (MONEY_MAX_CENTS).
-  balanceCents Int    @default(0)
+  balanceCents Int            @default(0)
+  entries      WalletLedger[]
+}
+
+model WalletLedger {
+  id                String     @id @db.Uuid
+  walletId          String     @db.Uuid
+  wallet            Wallet     @relation(fields: [walletId], references: [id], onDelete: Cascade)
+  type              WalletEntryType
+  /// SQL CHECK: 1 <= amountCents <= 2000000000. Direction lives in `type`, never in the sign.
+  amountCents       Int
+  /// SQL CHECK: 0 <= balanceAfterCents <= 2000000000.
+  balanceAfterCents Int
+  auctionId         String?    @db.Uuid
+  auction           Auction?   @relation(fields: [auctionId], references: [id], onDelete: SetNull)
+  createdAt         DateTime   @default(now()) @db.Timestamptz(3)
 }
 
 enum AuctionStatus {
@@ -72,7 +92,28 @@ model Auction {
   auditStateMac         String
   auditKeyVersion       Int
   createdAt             DateTime       @default(now()) @db.Timestamptz(3)
+  bids                  Bid[]
+  ledgerEntries         WalletLedger[]
 
   @@index([status, endsAt])
   @@index([sellerId])
+  @@index([currentLeaderId, status])
+}
+
+model Bid {
+  id             String   @id @db.Uuid
+  auctionId      String   @db.Uuid
+  auction        Auction  @relation(fields: [auctionId], references: [id], onDelete: Restrict)
+  sequence       Int
+  bidderId       String   @db.Uuid
+  bidder         User     @relation(fields: [bidderId], references: [id], onDelete: Restrict)
+  bidderPublicId String
+  amountCents    Int
+  previousHash   String
+  hash           String
+  endsAtAfter    DateTime @db.Timestamptz(3)
+  /// Written from the authoritative clock of the bid transaction. No database default.
+  createdAt      DateTime @db.Timestamptz(3)
+
+  @@unique([auctionId, sequence])
 }

@@ -503,6 +503,74 @@ describe('Auctions HTTP', () => {
     expect(after.sellerPublicId).toBe(before.sellerPublicId);
     expect(await anchor(after.id)).toBe('INTEGRO');
   });
+
+  it('follows the bidder journey: deposit, bid, and hand the lead to the next bidder', async () => {
+    const seller = await register(Role.SELLER, 'helena.lances@example.com');
+    const ana = await register(Role.BIDDER, 'ana.lances@example.com');
+    const bruno = await register(Role.BIDDER, 'bruno.lances@example.com');
+    const created = await request(app.getHttpServer())
+      .post('/api/auctions')
+      .set(auth(seller.accessToken))
+      .send(createBody());
+    expect(created.status).toBe(201);
+    const auctionId = created.body.id as string;
+    const endsAt = created.body.endsAt as string;
+
+    const sellerDeposit = await request(app.getHttpServer())
+      .post('/api/wallet/deposits')
+      .set(auth(seller.accessToken))
+      .send({ amountCents: 10_000 });
+    expect(sellerDeposit.status).toBe(403);
+    expect(sellerDeposit.body.code).toBe('FORBIDDEN');
+
+    const deposited = await request(app.getHttpServer())
+      .post('/api/wallet/deposits')
+      .set(auth(ana.accessToken))
+      .send({ amountCents: 10_000 });
+    expect(deposited.status).toBe(201);
+    expect(deposited.body).toEqual({ balanceCents: 10_000, committedCents: 0, availableCents: 10_000 });
+
+    const opening = await request(app.getHttpServer())
+      .post(`/api/auctions/${auctionId}/bids`)
+      .set(auth(ana.accessToken))
+      .send({ amountCents: 1500 });
+    expect(opening.status).toBe(201);
+    expect(opening.body.bid).toMatchObject({ sequence: 1, bidderPublicId: ana.user.publicId, amountCents: 1500 });
+    expect(opening.body.bid.bidderId).toBeUndefined();
+    expect(opening.body.auction.currentLeaderId).toBeUndefined();
+    expect(opening.body.auction.sellerId).toBeUndefined();
+    expect(opening.body.wallet).toEqual({ balanceCents: 10_000, committedCents: 1500, availableCents: 8500 });
+    expect(JSON.stringify(opening.body)).not.toContain(ana.user.id);
+    expect(JSON.stringify(opening.body)).not.toContain(ana.user.email);
+
+    await request(app.getHttpServer())
+      .post('/api/wallet/deposits')
+      .set(auth(bruno.accessToken))
+      .send({ amountCents: 10_000 });
+    const raised = await request(app.getHttpServer())
+      .post(`/api/auctions/${auctionId}/bids`)
+      .set(auth(bruno.accessToken))
+      .send({ amountCents: 1600 });
+    expect(raised.status).toBe(201);
+    expect(raised.body.auction.endsAt).toBe(endsAt);
+    expect(raised.body.auction.currentLeaderPublicId).toBe(bruno.user.publicId);
+
+    const anaWallet = await request(app.getHttpServer()).get('/api/wallet').set(auth(ana.accessToken));
+    expect(anaWallet.body).toEqual({ balanceCents: 10_000, committedCents: 0, availableCents: 10_000 });
+    const anaLedger = await prisma.walletLedger.count({
+      where: { wallet: { userId: ana.user.id }, type: 'DEPOSIT' },
+    });
+    expect(anaLedger).toBe(1);
+
+    const history = await request(app.getHttpServer())
+      .get(`/api/auctions/${auctionId}/bids`)
+      .set(auth(ana.accessToken));
+    expect(history.status).toBe(200);
+    expect(history.body).toHaveLength(2);
+    expect(JSON.stringify(history.body)).not.toContain(ana.user.id);
+    expect(JSON.stringify(history.body)).not.toContain(bruno.user.id);
+    expect(await anchor(auctionId)).toBe('INTEGRO');
+  });
 });
 
 async function register(role: Role, email: string) {
@@ -525,11 +593,12 @@ function auth(token: string) {
 
 async function anchor(id: string) {
   const row = await prisma.auction.findUniqueOrThrow({ where: { id } });
+  const bids = await prisma.bid.findMany({ where: { auctionId: id } });
   const secret = process.env.AUDIT_HMAC_SECRET;
   if (!secret) {
     throw new Error('AUDIT_HMAC_SECRET is missing');
   }
-  return verifyAuction(row, new Map([[AUDIT_KEY_VERSION, secret]]));
+  return verifyAuction(row, new Map([[AUDIT_KEY_VERSION, secret]]), bids);
 }
 
 function readCover(path: string) {

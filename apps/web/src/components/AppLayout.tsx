@@ -67,7 +67,11 @@ export function AppLayout() {
                 <NavLink to="/painel" className={navClass}>
                   Painel
                 </NavLink>
-              ) : null}
+              ) : (
+                <NavLink to="/carteira" className={navClass}>
+                  Carteira
+                </NavLink>
+              )}
               <NavLink to="/sessao" className={navClass}>
                 Conta
               </NavLink>

@@ -201,6 +201,50 @@ export function coverUrl(id: string) {
   return `${apiUrl}/api/auctions/${id}/cover`;
 }
 
+export type WalletView = {
+  balanceCents: number;
+  committedCents: number;
+  availableCents: number;
+};
+
+export type PublicBid = {
+  sequence: number;
+  bidderPublicId: string;
+  amountCents: number;
+  endsAtAfter: string;
+  createdAt: string;
+};
+
+export type PlaceBidResult = {
+  auction: PublicAuction;
+  bid: PublicBid;
+  wallet: WalletView;
+};
+
+export function getWallet() {
+  return request<WalletView>('/api/wallet', { method: 'GET' }, true);
+}
+
+export function deposit(amountCents: number) {
+  return request<WalletView>(
+    '/api/wallet/deposits',
+    { method: 'POST', body: JSON.stringify({ amountCents }) },
+    true,
+  );
+}
+
+export function listBids(auctionId: string) {
+  return request<PublicBid[]>(`/api/auctions/${auctionId}/bids`, { method: 'GET' }, true);
+}
+
+export function placeBid(auctionId: string, amountCents: number) {
+  return request<PlaceBidResult>(
+    `/api/auctions/${auctionId}/bids`,
+    { method: 'POST', body: JSON.stringify({ amountCents }) },
+    true,
+  );
+}
+
 export function roleLabel(role: Role) {
   return role === 'SELLER' ? 'Leiloeiro' : 'Licitante';
 }
