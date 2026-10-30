@@ -4,6 +4,14 @@ export function validateEnv(env: NodeJS.ProcessEnv) {
     throw new Error('JWT_SECRET must be at least 32 characters');
   }
 
+  const auditHmacSecret = env.AUDIT_HMAC_SECRET ?? '';
+  if (auditHmacSecret.length < 32) {
+    throw new Error('AUDIT_HMAC_SECRET must be at least 32 characters');
+  }
+  if (auditHmacSecret === jwtSecret) {
+    throw new Error('AUDIT_HMAC_SECRET must be different from JWT_SECRET');
+  }
+
   const databaseUrl = env.DATABASE_URL;
   if (!databaseUrl) {
     throw new Error('DATABASE_URL is required');
@@ -19,7 +27,7 @@ export function validateEnv(env: NodeJS.ProcessEnv) {
     throw new Error('PORT must be a positive integer');
   }
 
-  return { jwtSecret, databaseUrl, webOrigin, port };
+  return { jwtSecret, auditHmacSecret, databaseUrl, webOrigin, port };
 }
 
 export type AppEnv = ReturnType<typeof validateEnv>;

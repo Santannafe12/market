@@ -9,5 +9,12 @@ process.env.JWT_SECRET =
   process.env.JWT_SECRET && process.env.JWT_SECRET.length >= 32
     ? process.env.JWT_SECRET
     : 'test-jwt-secret-must-be-32-characters-min';
+if (
+  !process.env.AUDIT_HMAC_SECRET ||
+  process.env.AUDIT_HMAC_SECRET.length < 32 ||
+  process.env.AUDIT_HMAC_SECRET === process.env.JWT_SECRET
+) {
+  process.env.AUDIT_HMAC_SECRET = 'test-audit-hmac-secret-32-characters-min';
+}
 process.env.WEB_ORIGIN = process.env.WEB_ORIGIN ?? 'http://localhost:5173';
 process.env.PORT = process.env.PORT ?? '3000';

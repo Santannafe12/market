@@ -1,6 +1,6 @@
 # Casa de Leilões
 
-Fundação do desafio Elite Dev / Verzel: API NestJS com cadastro e login, PostgreSQL e uma tela mínima para ver a sessão. Lotes, lances e deploy ainda não fazem parte desta etapa.
+Casa de leilões do desafio Elite Dev / Verzel: API NestJS, PostgreSQL e um frontend em React. Nesta etapa dá para entrar, buscar um livro na Open Library e publicar um lote com a ficha salva no banco. Carteira, lances e deploy ainda não fazem parte.
 
 ## O que você precisa
 
@@ -22,10 +22,11 @@ No PowerShell o comando é o mesmo `copy`. As variáveis obrigatórias são:
 | `DATABASE_URL` | Postgres da aplicação. No Compose local: `postgresql://market:market@localhost:5432/market` |
 | `DATABASE_URL_TEST` | Banco dos testes: `postgresql://market:market@localhost:5432/market_test` |
 | `JWT_SECRET` | Segredo do token de acesso. A API não sobe com menos de 32 caracteres |
+| `AUDIT_HMAC_SECRET` | Segredo da âncora do lote. Pelo menos 32 caracteres e diferente de `JWT_SECRET`. A API não sobe sem ele |
 | `WEB_ORIGIN` | Origem permitida no CORS. Em desenvolvimento: `http://localhost:5173` |
 | `PORT` | Porta da API. O padrão é `3000` |
 
-O arquivo `.env.example` traz valores só para a máquina local. Troque `JWT_SECRET` antes de qualquer ambiente compartilhado.
+O arquivo `.env.example` traz valores só para a máquina local. Troque `JWT_SECRET` e `AUDIT_HMAC_SECRET` antes de qualquer ambiente compartilhado. Os dois segredos precisam ser diferentes.
 
 ## Banco de dados
 
@@ -60,6 +61,8 @@ Abra exatamente `http://localhost:5173`. O Vite também anuncia `127.0.0.1`, mas
 
 Abra o frontend, cadastre um leiloeiro ou um licitante e entre. Recarregar a página mantém a sessão. Sair volta para o login.
 
+A vitrine fica em `/`. O leiloeiro usa **Painel** para buscar uma obra, escolher uma edição e publicar um lote. Dá para criar um lote que já está ao vivo e outro que ainda vai começar. Cancelar, no painel, vale para lote sem lances.
+
 Para subir Postgres e API juntos, com a migration aplicada na inicialização do container:
 
 ```bash
@@ -76,7 +79,15 @@ Com o Postgres no ar:
 npm test
 ```
 
-A suíte cria `market_test` se ele ainda não existir, aplica as migrations e roda os testes HTTP de autenticação nesse banco.
+A suíte cria `market_test` se ele ainda não existir, aplica as migrations e roda os testes nesse banco. A suíte não chama a Open Library. Para uma consulta real, fora da suíte padrão:
+
+```bash
+cd apps/api
+set OPEN_LIBRARY_LIVE=1
+npx jest --config ./test/jest-e2e.json --runInBand test/catalog.client.spec.ts -t "live call"
+```
+
+No PowerShell, a variável é `$env:OPEN_LIBRARY_LIVE=1`.
 
 ## O que esta etapa faz
 
@@ -85,5 +96,12 @@ A suíte cria `market_test` se ele ainda não existir, aplica as migrations e ro
 - `GET /api/auth/me` exige o header `Authorization: Bearer`.
 - E-mail duplicado responde `409`. Campo desconhecido responde `400`. Senha errada ou sessão ausente respondem `401`.
 - A resposta não inclui o hash da senha.
+- O leiloeiro busca obras em `GET /api/catalog/search`, vê até 20 edições e cria o lote com `POST /api/auctions`. O servidor busca a edição de novo. Título enviado pelo navegador não entra no lote.
+- A ficha e, quando cabe, a capa ficam no PostgreSQL. Vitrine, detalhe e capa continuam no ar se a Open Library cair. Falha da ficha impede só a criação. Falha da capa deixa o lote sem imagem.
+- `GET /api/auctions?status=live|scheduled|ended` separa a vitrine pelo relógio do banco. Lote cancelado não entra. `GET /api/auctions/mine` lista os lotes do leiloeiro, inclusive cancelados.
+- `POST /api/auctions/:id/cancel` cancela lote aberto e sem lances. O lote nasce com uma âncora HMAC de histórico vazio; o cancelamento só regrava essa âncora se ela ainda confere.
 
-Ainda não há lotes, lances, carteira utilizável na tela, tempo real nem deploy.
+## Limitações desta etapa
+
+- A lista de edições para em 20. Data, ISBN e capa da Open Library variam bastante; um lote pode nascer sem algum desses dados.
+- Ainda não há depósito, lance, comprovante, auditoria pública, tempo real, seed nem deploy.

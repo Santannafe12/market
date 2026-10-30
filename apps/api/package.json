@@ -5,9 +5,9 @@
     "build": "nest build",
     "start": "node dist/main.js",
     "start:dev": "nest start --watch",
-    "migrate": "prisma migrate deploy",
+    "migrate": "node --env-file=../../.env ../../node_modules/prisma/build/index.js migrate deploy",
     "postinstall": "prisma generate",
-    "test": "node test/ensure-db.js && jest --config ./test/jest-e2e.json --runInBand"
+    "test": "prisma generate && node test/ensure-db.js && jest --config ./test/jest-e2e.json --runInBand"
   },
   "dependencies": {
     "@nestjs/common": "^11.1.6",

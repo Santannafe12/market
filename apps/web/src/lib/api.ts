@@ -103,6 +103,104 @@ export function me() {
   return request<PublicUser>('/api/auth/me', { method: 'GET' }, true);
 }
 
+export type DisplayStatus = 'live' | 'scheduled' | 'ended' | 'cancelled';
+
+export type PublicAuction = {
+  id: string;
+  sellerPublicId: string;
+  status: 'OPEN' | 'CANCELLED';
+  displayStatus: DisplayStatus;
+  startingBidCents: number;
+  minIncrementCents: number;
+  currentBidCents: number | null;
+  currentLeaderPublicId: string | null;
+  bidCount: number;
+  version: number;
+  startsAt: string;
+  originalEndsAt: string;
+  endsAt: string;
+  editionId: string;
+  workId: string;
+  title: string;
+  authors: string[];
+  publisher: string | null;
+  publishedDate: string | null;
+  publishedYear: number | null;
+  isbn: string | null;
+  language: string | null;
+  description: string | null;
+  hasCover: boolean;
+};
+
+export type WorkSummary = {
+  workId: string;
+  title: string;
+  authors: string[];
+  firstPublishYear: number | null;
+};
+
+export type EditionSummary = {
+  editionId: string;
+  title: string;
+  publisher: string | null;
+  publishedDate: string | null;
+  publishedYear: number | null;
+  isbn: string | null;
+  language: string | null;
+};
+
+export type EditionPreview = EditionSummary & {
+  workId: string;
+  authors: string[];
+  description: string | null;
+};
+
+export function listAuctions(status: 'live' | 'scheduled' | 'ended') {
+  return request<PublicAuction[]>(`/api/auctions?status=${status}`, { method: 'GET' }, true);
+}
+
+export function myAuctions() {
+  return request<PublicAuction[]>('/api/auctions/mine', { method: 'GET' }, true);
+}
+
+export function getAuction(id: string) {
+  return request<PublicAuction>(`/api/auctions/${id}`, { method: 'GET' }, true);
+}
+
+export function createAuction(input: {
+  editionId: string;
+  startingBidCents: number;
+  minIncrementCents: number;
+  startsAt: string;
+  endsAt: string;
+}) {
+  return request<PublicAuction>(
+    '/api/auctions',
+    { method: 'POST', body: JSON.stringify(input) },
+    true,
+  );
+}
+
+export function cancelAuction(id: string) {
+  return request<PublicAuction>(`/api/auctions/${id}/cancel`, { method: 'POST' }, true);
+}
+
+export function searchWorks(q: string) {
+  return request<WorkSummary[]>(`/api/catalog/search?q=${encodeURIComponent(q)}`, { method: 'GET' }, true);
+}
+
+export function workEditions(workId: string) {
+  return request<EditionSummary[]>(`/api/catalog/works/${workId}/editions`, { method: 'GET' }, true);
+}
+
+export function editionPreview(editionId: string) {
+  return request<EditionPreview>(`/api/catalog/editions/${editionId}`, { method: 'GET' }, true);
+}
+
+export function coverUrl(id: string) {
+  return `${apiUrl}/api/auctions/${id}/cover`;
+}
+
 export function roleLabel(role: Role) {
   return role === 'SELLER' ? 'Leiloeiro' : 'Licitante';
 }

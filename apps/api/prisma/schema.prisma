@@ -21,6 +21,7 @@ model User {
   role         Role
   createdAt    DateTime @default(now())
   wallet       Wallet?
+  auctions     Auction[]
 }
 
 model Wallet {
@@ -29,4 +30,49 @@ model Wallet {
   user         User   @relation(fields: [userId], references: [id], onDelete: Cascade)
   /// SQL CHECK in the init migration: 0 <= balanceCents <= 2000000000 (MONEY_MAX_CENTS).
   balanceCents Int    @default(0)
+}
+
+enum AuctionStatus {
+  OPEN
+  CANCELLED
+}
+
+model Auction {
+  id                    String         @id @db.Uuid
+  sellerId              String         @db.Uuid
+  seller                User           @relation(fields: [sellerId], references: [id], onDelete: Restrict)
+  sellerPublicId        String
+  status                AuctionStatus
+  /// SQL CHECKs: 1 <= startingBidCents, minIncrementCents <= 2000000000.
+  startingBidCents      Int
+  minIncrementCents     Int
+  /// SQL CHECK: null, or 1 <= currentBidCents <= 2000000000.
+  currentBidCents       Int?
+  currentLeaderId       String?        @db.Uuid
+  currentLeaderPublicId String?
+  /// SQL CHECK: bidCount = 0 only with a null bid and a null leader; a positive count keeps both.
+  bidCount              Int            @default(0)
+  version               Int            @default(0)
+  startsAt              DateTime       @db.Timestamptz(3)
+  originalEndsAt        DateTime       @db.Timestamptz(3)
+  endsAt                DateTime       @db.Timestamptz(3)
+  editionId             String
+  workId                String
+  title                 String
+  authors               String[]       @default([])
+  publisher             String?
+  publishedDate         String?
+  publishedYear         Int?
+  isbn                  String?
+  language              String?
+  description           String?        @db.VarChar(4000)
+  coverImage            Bytes?
+  coverContentType      String?
+  auditHeadHash         String
+  auditStateMac         String
+  auditKeyVersion       Int
+  createdAt             DateTime       @default(now()) @db.Timestamptz(3)
+
+  @@index([status, endsAt])
+  @@index([sellerId])
 }

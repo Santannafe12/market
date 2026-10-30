@@ -10,9 +10,11 @@ const buttonVariants = cva(
       variant: {
         default: 'bg-primary text-primary-foreground hover:bg-primary/90',
         outline: 'border border-input bg-card hover:bg-muted',
+        destructive: 'bg-destructive text-white hover:bg-destructive/90',
       },
       size: {
         default: 'h-10 px-4 py-2',
+        sm: 'h-8 px-3 text-xs',
       },
     },
     defaultVariants: {

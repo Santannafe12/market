@@ -5,7 +5,11 @@ import { AppEnv } from './config/env';
 
 export function configureApp(app: INestApplication, env: AppEnv) {
   app.setGlobalPrefix('api');
-  app.use(helmet());
+  app.use(
+    helmet({
+      crossOriginResourcePolicy: { policy: 'cross-origin' },
+    }),
+  );
   app.enableCors({
     origin: env.webOrigin,
     methods: ['GET', 'POST'],
