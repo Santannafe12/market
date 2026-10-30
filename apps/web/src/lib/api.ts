@@ -31,7 +31,7 @@ export class ApiError extends Error {
   }
 }
 
-const apiUrl = import.meta.env.VITE_API_URL ?? 'http://localhost:3000';
+export const apiUrl = import.meta.env.VITE_API_URL ?? 'http://localhost:3000';
 
 export function getToken() {
   return localStorage.getItem(TOKEN_KEY);
@@ -99,8 +99,8 @@ export function login(input: { email: string; password: string }) {
   });
 }
 
-export function me() {
-  return request<PublicUser>('/api/auth/me', { method: 'GET' }, true);
+export function me(signal?: AbortSignal) {
+  return request<PublicUser>('/api/auth/me', { method: 'GET', signal }, true);
 }
 
 export type DisplayStatus = 'live' | 'scheduled' | 'ended' | 'cancelled';
@@ -130,6 +130,7 @@ export type PublicAuction = {
   language: string | null;
   description: string | null;
   hasCover: boolean;
+  serverNow?: string;
 };
 
 export type WorkSummary = {
@@ -159,12 +160,12 @@ export function listAuctions(status: 'live' | 'scheduled' | 'ended') {
   return request<PublicAuction[]>(`/api/auctions?status=${status}`, { method: 'GET' }, true);
 }
 
-export function myAuctions() {
-  return request<PublicAuction[]>('/api/auctions/mine', { method: 'GET' }, true);
+export function myAuctions(signal?: AbortSignal) {
+  return request<PublicAuction[]>('/api/auctions/mine', { method: 'GET', signal }, true);
 }
 
-export function getAuction(id: string) {
-  return request<PublicAuction>(`/api/auctions/${id}`, { method: 'GET' }, true);
+export function getAuction(id: string, signal?: AbortSignal) {
+  return request<PublicAuction & { serverNow: string }>(`/api/auctions/${id}`, { method: 'GET', signal });
 }
 
 export function createAuction(input: {
@@ -221,8 +222,8 @@ export type PlaceBidResult = {
   wallet: WalletView;
 };
 
-export function getWallet() {
-  return request<WalletView>('/api/wallet', { method: 'GET' }, true);
+export function getWallet(signal?: AbortSignal) {
+  return request<WalletView>('/api/wallet', { method: 'GET', signal }, true);
 }
 
 export function deposit(amountCents: number) {
@@ -233,8 +234,8 @@ export function deposit(amountCents: number) {
   );
 }
 
-export function listBids(auctionId: string) {
-  return request<PublicBid[]>(`/api/auctions/${auctionId}/bids`, { method: 'GET' }, true);
+export function listBids(auctionId: string, signal?: AbortSignal) {
+  return request<PublicBid[]>(`/api/auctions/${auctionId}/bids`, { method: 'GET', signal });
 }
 
 export function placeBid(auctionId: string, amountCents: number) {
@@ -292,16 +293,16 @@ export type PublicReceipt = {
   createdAt: string;
 };
 
-export function participations() {
-  return request<Participation[]>('/api/me/participations', { method: 'GET' }, true);
+export function participations(signal?: AbortSignal) {
+  return request<Participation[]>('/api/me/participations', { method: 'GET', signal }, true);
 }
 
 export function getReceipt(publicToken: string) {
   return request<PublicReceipt>(`/api/receipts/${encodeURIComponent(publicToken)}`);
 }
 
-export function sellerReceived() {
-  return request<{ receivedCents: number }>('/api/auctions/received', { method: 'GET' }, true);
+export function sellerReceived(signal?: AbortSignal) {
+  return request<{ receivedCents: number }>('/api/auctions/received', { method: 'GET', signal }, true);
 }
 
 export function roleLabel(role: Role) {

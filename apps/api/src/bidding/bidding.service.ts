@@ -61,7 +61,7 @@ export class BiddingService {
           maxWait: 5_000,
           timeout: 30_000,
         });
-        this.publish(outcome.auctionId, outcome.walletUserIds);
+        this.publish(outcome.auctionId, outcome.walletUserIds, outcome.body.bid);
         return outcome.body;
       } catch (error) {
         if (!isRetryable(error) || attempt === 3) {
@@ -265,7 +265,7 @@ export class BiddingService {
       auctionId: auction.id,
       walletUserIds,
       body: {
-        auction: toPublicAuction(saved, now),
+        auction: { ...toPublicAuction(saved, now), serverNow: now.toISOString() },
         bid: toPublicBid(canonical),
         wallet: {
           balanceCents: wallet.balanceCents,
@@ -276,11 +276,21 @@ export class BiddingService {
     };
   }
 
-  private publish(auctionId: string, walletUserIds: string[]) {
+  private publish(
+    auctionId: string,
+    walletUserIds: string[],
+    bid: {
+      sequence: number;
+      bidderPublicId: string;
+      amountCents: number;
+      endsAtAfter: string;
+      createdAt: string;
+    },
+  ) {
     try {
-      this.events.auctionChanged(auctionId);
+      this.events.auctionChanged(auctionId, bid);
       for (const userId of walletUserIds) {
-        this.events.walletHint(userId);
+        this.events.walletHint(userId, auctionId);
       }
     } catch (error) {
       const message = error instanceof Error ? error.message : 'erro desconhecido';

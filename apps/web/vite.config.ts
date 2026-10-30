@@ -8,6 +8,7 @@ export default defineConfig({
   resolve: {
     alias: {
       '@': path.resolve(__dirname, 'src'),
+      '@realtime/auction-sync': path.resolve(__dirname, '../api/src/realtime/auction-sync.ts'),
     },
   },
   server: {

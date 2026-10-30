@@ -33,7 +33,7 @@ export function WalletPage() {
 
 function BidderWallet() {
   const queryClient = useQueryClient();
-  const wallet = useQuery({ queryKey: ['wallet'], queryFn: getWallet });
+  const wallet = useQuery({ queryKey: ['wallet'], queryFn: ({ signal }) => getWallet(signal) });
   const [amount, setAmount] = useState('1000');
   const [formError, setFormError] = useState('');
   const [success, setSuccess] = useState('');

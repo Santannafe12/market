@@ -3,16 +3,16 @@ import { useNavigate, useOutletContext } from 'react-router-dom';
 import type { AppSession } from '@/components/AppLayout';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { clearToken, roleLabel } from '@/lib/api';
+import { roleLabel } from '@/lib/api';
+import { endSession } from '@/lib/session';
 
 export function SessionPage() {
   const { user } = useOutletContext<AppSession>();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
 
-  function logout() {
-    clearToken();
-    queryClient.removeQueries({ queryKey: ['me'] });
+  async function logout() {
+    await endSession(queryClient);
     navigate('/entrar');
   }
 

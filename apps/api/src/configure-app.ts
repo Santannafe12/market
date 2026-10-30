@@ -2,8 +2,10 @@ import { INestApplication, ValidationPipe } from '@nestjs/common';
 import helmet from 'helmet';
 import { DomainExceptionFilter } from './common/domain-exception.filter';
 import { AppEnv } from './config/env';
+import { RealtimeAdapter } from './realtime/realtime.adapter';
 
 export function configureApp(app: INestApplication, env: AppEnv) {
+  app.useWebSocketAdapter(new RealtimeAdapter(app, env.webOrigin));
   app.setGlobalPrefix('api');
   app.use(
     helmet({

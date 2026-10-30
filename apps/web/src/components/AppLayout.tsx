@@ -4,6 +4,7 @@ import { NavLink, Navigate, Outlet, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { InlineError, errorMessage } from '@/components/InlineError';
 import { ApiError, clearToken, me, roleLabel, type PublicUser } from '@/lib/api';
+import { discardPrivateCache, endSession } from '@/lib/session';
 
 export type AppSession = { user: PublicUser };
 
@@ -12,7 +13,7 @@ export function AppLayout() {
   const queryClient = useQueryClient();
   const session = useQuery({
     queryKey: ['me'],
-    queryFn: me,
+    queryFn: ({ signal }) => me(signal),
     retry: false,
   });
   const unauthorized = session.error instanceof ApiError && session.error.status === 401;
@@ -22,7 +23,8 @@ export function AppLayout() {
       return;
     }
     clearToken();
-  }, [unauthorized]);
+    void discardPrivateCache(queryClient, true);
+  }, [unauthorized, queryClient]);
 
   if (session.isPending) {
     return <main className="p-8 text-sm text-muted-foreground">Carregando sessão...</main>;
@@ -45,9 +47,8 @@ export function AppLayout() {
 
   const user = session.data;
 
-  function logout() {
-    clearToken();
-    queryClient.removeQueries({ queryKey: ['me'] });
+  async function logout() {
+    await endSession(queryClient);
     navigate('/entrar');
   }
 

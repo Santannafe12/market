@@ -8,6 +8,15 @@ export function formatWhen(iso: string) {
   );
 }
 
+export function formatRemaining(ms: number) {
+  const total = Math.max(0, Math.ceil(ms / 1000));
+  const hours = Math.floor(total / 3600);
+  const minutes = Math.floor((total % 3600) / 60);
+  const seconds = total % 60;
+  const clock = `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+  return hours > 0 ? `${hours}:${clock}` : clock;
+}
+
 export function parseCents(value: string) {
   if (!/^\d+$/.test(value)) {
     return null;

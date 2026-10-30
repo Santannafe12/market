@@ -11,6 +11,9 @@ import { DomainError } from './domain-error';
 @Catch()
 export class DomainExceptionFilter implements ExceptionFilter {
   catch(exception: unknown, host: ArgumentsHost) {
+    if (host.getType() !== 'http') {
+      return;
+    }
     const response = host.switchToHttp().getResponse<Response>();
 
     if (exception instanceof DomainError) {

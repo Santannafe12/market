@@ -1,15 +1,16 @@
 import { useQueryClient } from '@tanstack/react-query';
 import { FormEvent, useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { ApiError, login } from '@/lib/api';
-import { adoptSession } from '@/lib/session';
+import { adoptSession, safeLotPath } from '@/lib/session';
 
 export function LoginPage() {
   const navigate = useNavigate();
+  const location = useLocation();
   const queryClient = useQueryClient();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -23,7 +24,7 @@ export function LoginPage() {
     try {
       const result = await login({ email, password });
       await adoptSession(queryClient, result.accessToken);
-      navigate('/');
+      navigate(safeLotPath(location.state));
     } catch (caught) {
       setError(caught instanceof ApiError ? caught.message : 'Não foi possível entrar.');
     } finally {
@@ -69,7 +70,7 @@ export function LoginPage() {
             </Button>
             <p className="text-sm text-muted-foreground">
               Ainda não tem conta?{' '}
-              <Link className="font-medium text-foreground underline" to="/cadastro">
+              <Link className="font-medium text-foreground underline" to="/cadastro" state={location.state}>
                 Cadastre-se
               </Link>
             </p>

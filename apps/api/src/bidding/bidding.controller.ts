@@ -9,7 +9,6 @@ export class BiddingController {
   constructor(private readonly bidding: BiddingService) {}
 
   @Get(':id/bids')
-  @UseGuards(JwtAuthGuard)
   list(@Param('id') id: string) {
     return this.bidding.list(id);
   }

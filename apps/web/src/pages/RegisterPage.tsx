@@ -1,15 +1,16 @@
 import { useQueryClient } from '@tanstack/react-query';
 import { FormEvent, useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { ApiError, register, Role } from '@/lib/api';
-import { adoptSession } from '@/lib/session';
+import { adoptSession, safeLotPath } from '@/lib/session';
 
 export function RegisterPage() {
   const navigate = useNavigate();
+  const location = useLocation();
   const queryClient = useQueryClient();
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
@@ -25,7 +26,7 @@ export function RegisterPage() {
     try {
       const result = await register({ name, email, password, role });
       await adoptSession(queryClient, result.accessToken);
-      navigate('/');
+      navigate(safeLotPath(location.state));
     } catch (caught) {
       setError(caught instanceof ApiError ? caught.message : 'Não foi possível cadastrar.');
     } finally {

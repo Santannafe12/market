@@ -395,7 +395,7 @@ export class SettlementService {
     try {
       this.events.auctionChanged(auctionId);
       for (const userId of walletUserIds) {
-        this.events.walletHint(userId);
+        this.events.walletHint(userId, auctionId);
       }
     } catch (error) {
       const message = error instanceof Error ? error.message : 'erro desconhecido';

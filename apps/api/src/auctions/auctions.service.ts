@@ -71,7 +71,8 @@ export class AuctionsService {
     if (!row) {
       throw new DomainError('AUCTION_NOT_FOUND', 404, 'Lote não encontrado.');
     }
-    return toPublicAuction(row, await this.databaseNow(this.prisma));
+    const now = await this.databaseNow(this.prisma);
+    return { ...toPublicAuction(row, now), serverNow: now.toISOString() };
   }
 
   async readAudit(id: string) {
@@ -318,7 +319,7 @@ export class AuctionsService {
     try {
       this.events.auctionChanged(auctionId);
       for (const userId of walletUserIds) {
-        this.events.walletHint(userId);
+        this.events.walletHint(userId, auctionId);
       }
     } catch (error) {
       const message = error instanceof Error ? error.message : 'erro desconhecido';

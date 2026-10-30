@@ -17,8 +17,9 @@
     "noUnusedParameters": true,
     "baseUrl": ".",
     "paths": {
-      "@/*": ["src/*"]
+      "@/*": ["src/*"],
+      "@realtime/auction-sync": ["../api/src/realtime/auction-sync.ts"]
     }
   },
-  "include": ["src"]
+  "include": ["src", "../api/src/realtime/auction-sync.ts"]
 }

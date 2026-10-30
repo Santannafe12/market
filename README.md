@@ -107,4 +107,5 @@ No PowerShell, a variável é `$env:OPEN_LIBRARY_LIVE=1`.
 - A lista de edições para em 20. Data, ISBN e capa da Open Library variam bastante; um lote pode nascer sem algum desses dados.
 - A liquidação roda na própria API, cerca de a cada 5 segundos (`SETTLEMENT_INTERVAL_MS`). Um lote pode ficar encerrado e ainda aberto por até um intervalo. Reiniciar o processo não perde esse lote: o próximo ciclo relê o banco.
 - Cancelar um lote com lances, antes da liquidação, libera o saldo comprometido do líder. O total da carteira não aumenta.
-- Ainda não há tempo real, seed demonstrável, busca avançada, dark mode nem deploy.
+- A sala usa Socket.IO no mesmo processo da API, sem Redis. O lance continua em `POST /api/auctions/:id/bids`. Se o aviso se perder, a sala aberta busca o lote de novo ao voltar para a aba e, no máximo, a cada 20 segundos. Duas réplicas não compartilham esses avisos.
+- Ainda não há seed demonstrável, busca avançada, dark mode nem deploy.

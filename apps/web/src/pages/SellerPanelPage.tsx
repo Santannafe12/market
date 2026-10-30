@@ -378,8 +378,11 @@ function MyLots() {
   const [confirming, setConfirming] = useState<string | null>(null);
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
-  const lots = useQuery({ queryKey: ['auctions', 'mine'], queryFn: myAuctions });
-  const received = useQuery({ queryKey: ['auctions', 'received'], queryFn: sellerReceived });
+  const lots = useQuery({ queryKey: ['auctions', 'mine'], queryFn: ({ signal }) => myAuctions(signal) });
+  const received = useQuery({
+    queryKey: ['auctions', 'received'],
+    queryFn: ({ signal }) => sellerReceived(signal),
+  });
   const cancel = useMutation({
     mutationFn: cancelAuction,
     onSuccess: async (lot) => {

@@ -63,7 +63,6 @@ export class AuctionsController {
   }
 
   @Get(':id')
-  @UseGuards(JwtAuthGuard)
   detail(@Param('id') id: string) {
     return this.auctions.detail(id);
   }

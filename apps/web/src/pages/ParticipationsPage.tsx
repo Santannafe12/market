@@ -20,7 +20,7 @@ const labels: Record<ParticipationResult, string> = {
 export function ParticipationsPage() {
   const { user } = useOutletContext<AppSession>();
   const queryClient = useQueryClient();
-  const query = useQuery({ queryKey: ['participations'], queryFn: participations });
+  const query = useQuery({ queryKey: ['participations'], queryFn: ({ signal }) => participations(signal) });
 
   if (user.role !== 'BIDDER') {
     return (

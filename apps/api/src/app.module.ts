@@ -8,6 +8,7 @@ import { CatalogModule } from './catalog/catalog.module';
 import { DomainEventsModule } from './common/domain-events.module';
 import { validateEnv } from './config/env';
 import { PrismaModule } from './prisma/prisma.module';
+import { RealtimeModule } from './realtime/realtime.module';
 import { SettlementModule } from './settlement/settlement.module';
 import { WalletModule } from './wallet/wallet.module';
 
@@ -27,6 +28,7 @@ import { WalletModule } from './wallet/wallet.module';
     WalletModule,
     BiddingModule,
     SettlementModule,
+    RealtimeModule,
   ],
 })
 export class AppModule {}
