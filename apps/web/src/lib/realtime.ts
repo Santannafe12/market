@@ -33,7 +33,8 @@ export function ensureRealtime() {
   socketToken = token;
   const next = io(apiUrl || undefined, {
     autoConnect: true,
-    transports: ['websocket', 'polling'],
+    // WebSocket only: on Vercel, long-polling requests can land on another Function instance.
+    transports: ['websocket'],
     auth: (callback) => {
       const live = getToken();
       callback(live ? { token: live } : {});

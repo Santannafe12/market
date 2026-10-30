@@ -1,6 +1,7 @@
-import { Body, Controller, Get, HttpCode, Param, Post, Req, UseGuards } from '@nestjs/common';
+import { Body, Controller, Get, HttpCode, Param, Post, Req, UseGuards, UseInterceptors } from '@nestjs/common';
 import { AccessTokenPayload } from '../auth/jwt.strategy';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
+import { SettleBeforeReadInterceptor } from '../settlement/settle-before-read.interceptor';
 import { BiddingService } from './bidding.service';
 import { PlaceBidDto } from './dto/place-bid.dto';
 
@@ -9,6 +10,7 @@ export class BiddingController {
   constructor(private readonly bidding: BiddingService) {}
 
   @Get(':id/bids')
+  @UseInterceptors(SettleBeforeReadInterceptor)
   list(@Param('id') id: string) {
     return this.bidding.list(id);
   }

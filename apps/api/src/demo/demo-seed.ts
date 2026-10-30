@@ -1,4 +1,4 @@
-import { readFileSync } from 'fs';
+import { existsSync, readFileSync } from 'fs';
 import { resolve } from 'path';
 import { Injectable, Logger } from '@nestjs/common';
 import { Role } from '@prisma/client';
@@ -40,7 +40,14 @@ const BOOK_BY_TAG: Record<DemoTag, string> = {
 const DEMO_LOCK_KEY = 70_072_026;
 const MINUTE_MS = 60_000;
 const DAY_MS = 24 * 60 * MINUTE_MS;
-const FIXTURES = resolve(__dirname, '../../prisma/fixtures');
+/** `src/` and `dist/` sit two levels below `apps/api`; the Vercel bundle moves `__dirname`, so cwd is a fallback. */
+const FIXTURES =
+  [
+    resolve(__dirname, '../../prisma/fixtures'),
+    resolve(__dirname, '../prisma/fixtures'),
+    resolve(process.cwd(), 'prisma/fixtures'),
+    resolve(process.cwd(), 'apps/api/prisma/fixtures'),
+  ].find((dir) => existsSync(resolve(dir, 'books.json'))) ?? resolve(__dirname, '../../prisma/fixtures');
 
 type DemoUser = { id: string; publicId: string; email: string };
 

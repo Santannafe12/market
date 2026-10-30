@@ -35,7 +35,7 @@ async function main() {
     'npx prisma migrate deploy --schema=prisma/schema.prisma',
     {
       cwd: path.resolve(__dirname, '..'),
-      env: { ...process.env, DATABASE_URL: testUrl },
+      env: { ...process.env, DATABASE_URL: testUrl, DIRECT_URL: testUrl },
       stdio: 'inherit',
       shell: true,
     },

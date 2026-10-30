@@ -5,6 +5,7 @@ const { assertSafeTestTarget } = require('./assert-test-database');
 dotenv.config({ path: path.resolve(__dirname, '../../../.env') });
 
 process.env.DATABASE_URL = assertSafeTestTarget(process.env);
+process.env.DIRECT_URL = process.env.DATABASE_URL;
 process.env.JWT_SECRET =
   process.env.JWT_SECRET && process.env.JWT_SECRET.length >= 32
     ? process.env.JWT_SECRET
@@ -20,6 +21,9 @@ process.env.WEB_ORIGIN = process.env.WEB_ORIGIN ?? 'http://localhost:5173';
 process.env.PORT = process.env.PORT ?? '3000';
 // The suite calls settlement directly. A live 5s tick would close lots the other tests still hold open.
 process.env.SETTLEMENT_INTERVAL_MS = '3600000';
+// Same reason for reads: suites read wallets with due lots they settle themselves. settle-on-read.e2e-spec turns it on.
+process.env.SETTLE_ON_READ = 'false';
+delete process.env.VERCEL;
 // Demo routines stay off; the seed suite calls DemoSeed itself.
 process.env.SEED_ON_BOOT = 'false';
 process.env.DEMO_ENSURE = 'false';

@@ -5,7 +5,7 @@ import { AppEnv } from './config/env';
 import { RealtimeAdapter } from './realtime/realtime.adapter';
 
 export function configureApp(app: INestApplication, env: AppEnv) {
-  app.useWebSocketAdapter(new RealtimeAdapter(app, env.webOrigin));
+  app.useWebSocketAdapter(new RealtimeAdapter(app, env.webOrigins));
   app.setGlobalPrefix('api');
   app.use(
     helmet({
@@ -13,7 +13,7 @@ export function configureApp(app: INestApplication, env: AppEnv) {
     }),
   );
   app.enableCors({
-    origin: env.webOrigin,
+    origin: env.webOrigins,
     methods: ['GET', 'POST'],
     allowedHeaders: ['Authorization', 'Content-Type'],
   });

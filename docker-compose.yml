@@ -24,6 +24,7 @@ services:
       - .env
     environment:
       DATABASE_URL: postgresql://market:market@postgres:5432/market
+      DIRECT_URL: postgresql://market:market@postgres:5432/market
       PORT: 3000
       SEED_ON_BOOT: ${SEED_ON_BOOT:-false}
       DEMO_ENSURE: ${DEMO_ENSURE:-false}

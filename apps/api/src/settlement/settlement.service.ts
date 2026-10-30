@@ -108,6 +108,25 @@ export class SettlementService {
     return outcomes;
   }
 
+  /**
+   * Read path for one lot. The unlocked check keeps a read of a running lot off the row lock;
+   * `finalizeAuction` locks and rechecks, so a stale answer here only costs one `NOT_DUE`.
+   */
+  async finalizeIfDue(id: string): Promise<FinalizeOutcome | null> {
+    if (!UUID_PATTERN.test(id)) {
+      return null;
+    }
+    const rows = await this.prisma.$queryRaw<Array<{ due: boolean }>>(Prisma.sql`
+      SELECT ("endsAt" <= clock_timestamp()) AS due
+      FROM "Auction"
+      WHERE id = CAST(${id} AS uuid) AND status = 'OPEN'::"AuctionStatus"
+    `);
+    if (!rows[0]?.due) {
+      return null;
+    }
+    return this.finalizeAuction(id);
+  }
+
   /** `receiptToken` is only passed by the seed, so the historical demo receipt keeps a known link. */
   async finalizeAuction(id: string, receiptToken?: string): Promise<FinalizeOutcome> {
     if (!UUID_PATTERN.test(id)) {
