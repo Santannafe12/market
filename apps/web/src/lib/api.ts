@@ -245,6 +245,35 @@ export function placeBid(auctionId: string, amountCents: number) {
   );
 }
 
+export type AuditVerdict = 'INTEGRO' | 'ADULTERADO' | 'INDETERMINADO';
+
+export type AuditFailure = {
+  code: string;
+  sequence: number | null;
+  message: string;
+};
+
+export type AuditBid = {
+  sequence: number;
+  bidderPublicId: string;
+  amountCents: number;
+  previousHash: string;
+  hash: string;
+  endsAtAfter: string;
+  createdAt: string;
+};
+
+export type AuditReport = {
+  verdict: AuditVerdict;
+  failures: AuditFailure[];
+  auction: PublicAuction;
+  bids: AuditBid[];
+};
+
+export function getAudit(auctionId: string) {
+  return request<AuditReport>(`/api/auctions/${auctionId}/audit`);
+}
+
 export function roleLabel(role: Role) {
   return role === 'SELLER' ? 'Leiloeiro' : 'Licitante';
 }

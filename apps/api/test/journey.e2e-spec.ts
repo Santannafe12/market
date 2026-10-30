@@ -570,6 +570,21 @@ describe('Auctions HTTP', () => {
     expect(JSON.stringify(history.body)).not.toContain(ana.user.id);
     expect(JSON.stringify(history.body)).not.toContain(bruno.user.id);
     expect(await anchor(auctionId)).toBe('INTEGRO');
+
+    const published = await request(app.getHttpServer()).get(`/api/auctions/${auctionId}/audit`);
+    expect(published.status).toBe(200);
+    expect(published.body.verdict).toBe('INTEGRO');
+    expect(published.body.failures).toEqual([]);
+    expect(published.body.bids).toHaveLength(2);
+    const publishedJson = JSON.stringify(published.body);
+    expect(publishedJson).toContain(ana.user.publicId);
+    expect(publishedJson).toContain(bruno.user.publicId);
+    expect(publishedJson).not.toContain(ana.user.id);
+    expect(publishedJson).not.toContain(bruno.user.id);
+    expect(publishedJson).not.toContain(ana.user.email);
+    expect(publishedJson).not.toContain(seller.user.email);
+    expect(publishedJson).not.toContain('Helena Vendedora');
+    expect(publishedJson).not.toContain('Bruno Licitante');
   });
 });
 

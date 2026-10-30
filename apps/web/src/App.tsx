@@ -3,6 +3,7 @@ import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom';
 import { RequireAuth } from '@/auth/RequireAuth';
 import { AppLayout } from '@/components/AppLayout';
 import { AuctionDetailPage } from '@/pages/AuctionDetailPage';
+import { AuditPage } from '@/pages/AuditPage';
 import { LoginPage } from '@/pages/LoginPage';
 import { RegisterPage } from '@/pages/RegisterPage';
 import { SellerPanelPage } from '@/pages/SellerPanelPage';
@@ -23,6 +24,7 @@ export function App() {
         <Routes>
           <Route path="/entrar" element={<LoginPage />} />
           <Route path="/cadastro" element={<RegisterPage />} />
+          <Route path="/auditoria/:auctionId" element={<AuditPage />} />
           <Route
             element={
               <RequireAuth>

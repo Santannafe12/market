@@ -70,6 +70,9 @@ export function AuctionDetailPage() {
           <div className="flex flex-wrap items-center gap-3">
             <h1 className="text-2xl font-semibold tracking-tight">{lot.title}</h1>
             <StatusBadge status={lot.displayStatus} />
+            <Link className="text-sm font-medium underline" to={`/auditoria/${auctionId}`}>
+              Auditoria pública
+            </Link>
           </div>
           {lot.description ? <p className="text-sm leading-6">{lot.description}</p> : null}
           <dl className="grid gap-3 sm:grid-cols-2">

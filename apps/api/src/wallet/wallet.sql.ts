@@ -34,6 +34,32 @@ export async function lockWallet(db: SqlClient, userId: string) {
   return rows[0] ?? null;
 }
 
+/**
+ * Balance and committed sum from one statement, so both values share that statement's snapshot.
+ * The committed sum stays derived and does not lock the other lots.
+ */
+export async function walletSnapshot(db: SqlClient, userId: string) {
+  const rows = await db.$queryRaw<Array<{ balanceCents: number; committed: string }>>(
+    Prisma.sql`
+      SELECT
+        w."balanceCents" AS "balanceCents",
+        COALESCE((
+          SELECT SUM(a."currentBidCents")
+          FROM "Auction" a
+          WHERE a."currentLeaderId" = w."userId"
+            AND a."status" = 'OPEN'::"AuctionStatus"
+        ), 0)::text AS "committed"
+      FROM "Wallet" w
+      WHERE w."userId" = CAST(${userId} AS uuid)
+    `,
+  );
+  const row = rows[0];
+  if (!row) {
+    return null;
+  }
+  return { balanceCents: row.balanceCents, committedCents: parseCommitted(row.committed) };
+}
+
 /** Sum of open leaderships. Does not lock those lots: another bid already locks its own row first. */
 export async function committedCents(db: SqlClient, userId: string) {
   const rows = await db.$queryRaw<Array<{ committed: string }>>(
@@ -44,7 +70,11 @@ export async function committedCents(db: SqlClient, userId: string) {
         AND "status" = 'OPEN'::"AuctionStatus"
     `,
   );
-  const committed = Number(rows[0]?.committed ?? '0');
+  return parseCommitted(rows[0]?.committed ?? '0');
+}
+
+function parseCommitted(value: string) {
+  const committed = Number(value);
   if (!Number.isSafeInteger(committed) || committed < 0 || committed > MONEY_MAX_CENTS) {
     throw new DomainError('AMOUNT_OVERFLOW', 422, 'Esse valor passa do limite permitido.');
   }

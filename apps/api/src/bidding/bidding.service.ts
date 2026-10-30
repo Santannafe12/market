@@ -2,6 +2,7 @@ import { randomUUID } from 'crypto';
 import { Injectable, Logger } from '@nestjs/common';
 import { Prisma, Role } from '@prisma/client';
 import { AuditService } from '../audit/audit.service';
+import { auditIdentities } from '../audit/audit';
 import { auctionViewSelect, toPublicAuction } from '../auctions/auction.presenter';
 import { DomainError } from '../common/domain-error';
 import { DomainEvents } from '../common/domain-events';
@@ -171,7 +172,15 @@ export class BiddingService {
       where: { auctionId: auction.id },
       orderBy: { sequence: 'asc' },
     });
-    if (this.audit.verify(auction, history) !== 'INTEGRO') {
+    const referenced = new Set<string>([auction.sellerId, ...history.map((bid) => bid.bidderId)]);
+    if (auction.currentLeaderId) {
+      referenced.add(auction.currentLeaderId);
+    }
+    const users = await tx.user.findMany({
+      where: { id: { in: [...referenced] } },
+      select: { id: true, publicId: true },
+    });
+    if (this.audit.verify(auction, history, auditIdentities(auction.sellerId, users)) !== 'INTEGRO') {
       throw new DomainError(
         'AUCTION_INTEGRITY',
         422,

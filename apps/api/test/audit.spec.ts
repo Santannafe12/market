@@ -1,5 +1,6 @@
 import {
   auditHmac,
+  auditAuction,
   canonicalBid,
   canonicalGenesis,
   canonicalState,
@@ -88,6 +89,30 @@ describe('audit anchor', () => {
       'ADULTERADO',
     );
     expect(verifyAuction({ ...intact, auditKeyVersion: 99 }, keys)).toBe('INDETERMINADO');
+    const unsoldState = { ...current, status: 'UNSOLD' };
+    expect(
+      verifyAuction(
+        { ...intact, status: 'UNSOLD', auditStateMac: auditHmac(secret, canonicalState(unsoldState)) },
+        keys,
+      ),
+    ).toBe('INTEGRO');
+    const unsoldWithBid = {
+      ...unsoldState,
+      bidCount: 1,
+      currentBidCents: 10,
+      currentLeaderId: sellerId,
+      currentLeaderPublicId: 'JOSÉ',
+    };
+    expect(
+      verifyAuction(
+        {
+          ...intact,
+          ...unsoldWithBid,
+          auditStateMac: auditHmac(secret, canonicalState(unsoldWithBid)),
+        },
+        keys,
+      ),
+    ).toBe('ADULTERADO');
 
     const dirty = {
       ...current,
@@ -170,5 +195,16 @@ describe('audit anchor', () => {
     const tampered = { ...row, currentLeaderId: sellerId };
     expect(verifyAuction(tampered, keys, signed)).toBe('ADULTERADO');
     expect(tampered.auditHeadHash).toBe(hash);
+    const relinked = auditAuction(row, keys, signed, {
+      sellerPublicId: 'JOSÉ',
+      publicIdByUserId: new Map([
+        [sellerId, 'JOSÉ'],
+        [bidderId, 'OUTRA'],
+      ]),
+    });
+    expect(relinked.verdict).toBe('ADULTERADO');
+    expect(relinked.failures.map((item) => item.code)).toEqual(expect.arrayContaining(['BIDDER_LINK', 'LEADER_LINK']));
+    expect(relinked.failures.map((item) => item.code)).not.toContain('BID_HMAC');
+    expect(JSON.stringify(relinked)).not.toContain(bidderId);
   });
 });

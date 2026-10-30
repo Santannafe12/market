@@ -2,6 +2,7 @@ import { randomUUID } from 'crypto';
 import { Injectable } from '@nestjs/common';
 import { Prisma, Role } from '@prisma/client';
 import { AuditService } from '../audit/audit.service';
+import { auditIdentities } from '../audit/audit';
 import { CatalogClient, CatalogRequestError, catalogHttpError } from '../catalog/catalog.client';
 import { DomainError } from '../common/domain-error';
 import { PrismaService } from '../prisma/prisma.service';
@@ -55,6 +56,35 @@ export class AuctionsService {
       throw new DomainError('AUCTION_NOT_FOUND', 404, 'Lote não encontrado.');
     }
     return toPublicAuction(row, await this.databaseNow(this.prisma));
+  }
+
+  async readAudit(id: string) {
+    if (!isUuid(id)) {
+      throw new DomainError('AUCTION_NOT_FOUND', 404, 'Lote não encontrado.');
+    }
+    const row = await this.prisma.auction.findUnique({ where: { id }, select: auctionViewSelect });
+    if (!row) {
+      throw new DomainError('AUCTION_NOT_FOUND', 404, 'Lote não encontrado.');
+    }
+    const bids = await this.prisma.bid.findMany({
+      where: { auctionId: id },
+      orderBy: { sequence: 'asc' },
+    });
+    const referenced = new Set<string>([row.sellerId, ...bids.map((bid) => bid.bidderId)]);
+    if (row.currentLeaderId) {
+      referenced.add(row.currentLeaderId);
+    }
+    const users = await this.prisma.user.findMany({
+      where: { id: { in: [...referenced] } },
+      select: { id: true, publicId: true },
+    });
+    const { verdict, failures } = this.audit.report(row, bids, auditIdentities(row.sellerId, users));
+    return {
+      verdict,
+      failures,
+      auction: toPublicAuction(row, await this.databaseNow(this.prisma)),
+      bids: bids.map(toAuditBid),
+    };
   }
 
   async cover(id: string) {
@@ -185,7 +215,11 @@ export class AuctionsService {
           'Este lote já recebeu lances e não pode ser cancelado.',
         );
       }
-      if (this.audit.verify(current) !== 'INTEGRO') {
+      const seller = await tx.user.findUnique({
+        where: { id: current.sellerId },
+        select: { id: true, publicId: true },
+      });
+      if (this.audit.verify(current, [], auditIdentities(current.sellerId, seller ? [seller] : [])) !== 'INTEGRO') {
         throw new DomainError(
           'AUCTION_INTEGRITY',
           422,
@@ -250,6 +284,26 @@ export class AuctionsService {
     }
     return now;
   }
+}
+
+function toAuditBid(bid: {
+  sequence: number;
+  bidderPublicId: string;
+  amountCents: number;
+  previousHash: string;
+  hash: string;
+  endsAtAfter: Date;
+  createdAt: Date;
+}) {
+  return {
+    sequence: bid.sequence,
+    bidderPublicId: bid.bidderPublicId,
+    amountCents: bid.amountCents,
+    previousHash: bid.previousHash,
+    hash: bid.hash,
+    endsAtAfter: bid.endsAtAfter.toISOString(),
+    createdAt: bid.createdAt.toISOString(),
+  };
 }
 
 function parseInstant(value: string) {

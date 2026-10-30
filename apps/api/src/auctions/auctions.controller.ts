@@ -38,6 +38,11 @@ export class AuctionsController {
     return this.auctions.list(query.status);
   }
 
+  @Get(':id/audit')
+  audit(@Param('id') id: string) {
+    return this.auctions.readAudit(id);
+  }
+
   @Get(':id/cover')
   async cover(@Param('id') id: string, @Res({ passthrough: true }) response: Response) {
     const cover = await this.auctions.cover(id);

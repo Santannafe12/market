@@ -4,13 +4,14 @@ import {
   AUDIT_KEY_VERSION,
   AuctionAuditRow,
   AuctionStateInput,
+  AuditIdentities,
   BidCanonicalInput,
   BidChainInput,
+  auditAuction,
   auditHmac,
   canonicalBid,
   canonicalGenesis,
   canonicalState,
-  verifyAuction,
 } from './audit';
 
 @Injectable()
@@ -34,7 +35,11 @@ export class AuditService {
     return auditHmac(this.secret, canonicalBid(bid));
   }
 
-  verify(row: AuctionAuditRow, bids: readonly BidChainInput[] = []) {
-    return verifyAuction(row, new Map([[this.keyVersion, this.secret]]), bids);
+  report(row: AuctionAuditRow, bids: readonly BidChainInput[] = [], identities?: AuditIdentities) {
+    return auditAuction(row, new Map([[this.keyVersion, this.secret]]), bids, identities);
+  }
+
+  verify(row: AuctionAuditRow, bids: readonly BidChainInput[] = [], identities?: AuditIdentities) {
+    return this.report(row, bids, identities).verdict;
   }
 }

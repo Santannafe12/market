@@ -5,7 +5,7 @@ import { DomainError } from '../common/domain-error';
 import { DomainEvents } from '../common/domain-events';
 import { MONEY_MAX_CENTS } from '../common/money';
 import { PrismaService } from '../prisma/prisma.service';
-import { committedCents, lockWallet } from './wallet.sql';
+import { committedCents, lockWallet, walletSnapshot } from './wallet.sql';
 
 @Injectable()
 export class WalletService {
@@ -17,15 +17,11 @@ export class WalletService {
   ) {}
 
   async view(userId: string) {
-    const wallet = await this.prisma.wallet.findUnique({
-      where: { userId },
-      select: { balanceCents: true },
-    });
-    if (!wallet) {
+    const snapshot = await walletSnapshot(this.prisma, userId);
+    if (!snapshot) {
       throw new DomainError('WALLET_NOT_FOUND', 404, 'Carteira não encontrada.');
     }
-    const committed = await committedCents(this.prisma, userId);
-    return balances(wallet.balanceCents, committed);
+    return balances(snapshot.balanceCents, snapshot.committedCents);
   }
 
   async deposit(userId: string, amountCents: number) {

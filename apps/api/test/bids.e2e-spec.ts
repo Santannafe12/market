@@ -457,6 +457,42 @@ describe('wallet and bids', () => {
     expect(await prisma.bid.count({ where: { auctionId } })).toBe(2);
     expect((await verdict(auctionId)).verdict).toBe('ADULTERADO');
   });
+
+  it('reads the balance and the committed sum from the same snapshot', async () => {
+    const seller = await register(Role.SELLER, 'seller.snapshot@example.com');
+    const ana = await register(Role.BIDDER, 'ana.snapshot@example.com');
+    expect((await deposit(ana.accessToken, 5_000)).status).toBe(201);
+    const window = await liveWindow(2 * 60 * 60_000);
+    const auctionId = await insertAuction(seller.user, {
+      startingBidCents: 1_000,
+      minIncrementCents: 100,
+      startsAt: window.startsAt,
+      endsAt: window.endsAt,
+    });
+    expect((await bid(ana.accessToken, auctionId, 1_000)).status).toBe(201);
+
+    const client = new Client({ connectionString: process.env.DATABASE_URL });
+    await client.connect();
+    let committed = false;
+    try {
+      await client.query('BEGIN');
+      await client.query('UPDATE "Wallet" SET "balanceCents" = 9000 WHERE "userId" = $1', [ana.user.id]);
+      await client.query('UPDATE "Auction" SET "currentBidCents" = 4000 WHERE id = $1', [auctionId]);
+      const during = await wallet(ana.accessToken);
+      expect(during.status).toBe(200);
+      expect(during.body).toEqual({ balanceCents: 5_000, committedCents: 1_000, availableCents: 4_000 });
+      await client.query('COMMIT');
+      committed = true;
+    } finally {
+      if (!committed) {
+        await client.query('ROLLBACK');
+      }
+      await client.end();
+    }
+
+    const after = await wallet(ana.accessToken);
+    expect(after.body).toEqual({ balanceCents: 9_000, committedCents: 4_000, availableCents: 5_000 });
+  });
 });
 
 async function register(role: Role, email: string) {
