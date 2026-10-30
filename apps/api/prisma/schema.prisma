@@ -95,6 +95,8 @@ model Auction {
   auditHeadHash         String
   auditStateMac         String
   auditKeyVersion       Int
+  /// Demo scenario written by the seed: demo-live, demo-scheduled, demo-settled, demo-unsold. Outside the audit anchor.
+  demoTag               String?
   createdAt             DateTime       @default(now()) @db.Timestamptz(3)
   bids                  Bid[]
   ledgerEntries         WalletLedger[]
@@ -103,6 +105,7 @@ model Auction {
   @@index([status, endsAt])
   @@index([sellerId])
   @@index([currentLeaderId, status])
+  @@index([demoTag])
 }
 
 model Bid {

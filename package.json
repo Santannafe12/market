@@ -9,7 +9,9 @@
     "dev:api": "npm run start:dev --workspace=api",
     "dev:web": "npm run dev --workspace=web",
     "migrate": "npm run migrate --workspace=api",
+    "seed": "npm run seed --workspace=api",
     "test": "npm test --workspace=api",
-    "build:api": "npm run build --workspace=api"
+    "build:api": "npm run build --workspace=api",
+    "build:web": "npm run build --workspace=web"
   }
 }

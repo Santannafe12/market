@@ -1,0 +1,62 @@
+{
+  "source": "Open Library: /books/{editionId}.json, /works/{workId}.json and covers.openlibrary.org/b/id/{coverId}-M.jpg",
+  "capturedAt": "2026-10-30",
+  "books": [
+    {
+      "editionId": "OL61352956M",
+      "workId": "OL1003134W",
+      "title": "O Alienista",
+      "authors": ["Machado de Assis"],
+      "publisher": "Penguin-Companhia",
+      "publishedDate": "27/05/2014",
+      "publishedYear": 2014,
+      "isbn": "9788563560933",
+      "language": "por",
+      "description": "Clássico da literatura brasileira, este texto de Machado de Assis continua sendo, cento e trinta anos depois de sua publicação original, uma das mais devastadoras observações sobre a insanidade a que pode chegar a ciência. Tão palpitante quanto de leitura prazerosa, O alienista é uma dessas joias da ficção da literatura mundial. Médico, Simão Bacamarte passa a se interessar pela psiquiatria, iniciando um estudo sobre a loucura em Itaguaí, onde funda a Casa Verde - um típico hospício oitocentista -, arregimentando cobaias humanas para seus experimentos. O que se segue é uma história surpreendente e atual em seu debate sobre desvios e normalidade, loucura e razão. Ensaio sobre a loucura e a lucidez, sátira política e comédia de costumes, esta edição de Machado de Assis conta com uma esclarecedora nota introdutória do crítico britânico John Gledson, um dos grandes intérpretes do autor brasileiro.",
+      "cover": "covers/OL61352956M.jpg",
+      "coverContentType": "image/jpeg"
+    },
+    {
+      "editionId": "OL62363757M",
+      "workId": "OL1003040W",
+      "title": "Dom Casmurro",
+      "authors": ["Machado de Assis"],
+      "publisher": "Projecto Adamastor",
+      "publishedDate": "2013",
+      "publishedYear": 2013,
+      "isbn": "9789898698124",
+      "language": "por",
+      "description": "> Tudo o que contei no fim do outro capítulo foi obra de um instante. O que se lhe seguiu foi ainda mais rápido. Dei um pulo, e antes que ela raspasse o muro, li estes dois nomes, abertos ao prego, e assim dispostos: > > BENTO > > CAPITOLINA > > Voltei-me para ela; Capitu tinha os olhos no chão. Ergueu-os logo, devagar, e ficámos a olhar um para o outro… Confissão de crianças, tu valias bem duas ou três páginas, mas quero ser poupado. Em verdade, não falámos nada; o muro falou por nós. Não nos movemos, as mãos é que se estenderam pouco a pouco, todas quatro, pegando-se, apertando-se, fundindo-se. Não marquei a hora exacta daquele gesto. Devia tê-la marcado; sinto a falta de uma nota escrita naquela mesma noite, e que eu poria aqui com os erros de ortografia que trouxesse, mas não traria nenhum, tal era a diferença entre o estudante e o adolescente. Conhecia as regras do escrever, sem suspeitar as do amar; tinha orgias de latim e era virgem de mulheres. > > Não soltámos as mãos, nem elas se deixaram cair de cansadas ou de esquecidas. Os olhos fitavam-se e desfitavam-se, e depois de vagarem ao perto, tornavam a meter-se uns pelos outros… Padre futuro, estava assim diante dela como de um altar, sendo uma das faces a Epístola e a outra o Evangelho. A boca podia ser o cálice, os lábios a patena. Faltava dizer a missa nova, por um latim que ninguém aprende, e é a língua católica dos homens. Não me tenhas por sacrílego, leitora minha devota; a limpeza da intenção lava o que puder haver menos curial no estilo. Estávamos ali com o céu em nós. As mãos, unindo os nervos, faziam das duas criaturas uma só, mas uma só criatura seráfica. Os olhos continuaram a dizer coisas infinitas, as palavras de boca é que nem tentavam sair, tornavam ao coração caladas como vinham…",
+      "cover": "covers/OL62363757M.jpg",
+      "coverContentType": "image/jpeg"
+    },
+    {
+      "editionId": "OL61095027M",
+      "workId": "OL1003017W",
+      "title": "Memórias póstumas de Brás Cubas",
+      "authors": ["Machado de Assis"],
+      "publisher": "Melhoramentos",
+      "publishedDate": "2012",
+      "publishedYear": 2012,
+      "isbn": "9788506004234",
+      "language": "por",
+      "description": "Imagine se, depois de morrer, você pudesse contar a própria vida. O que diria? Quem seriam os personagens da sua história? Quais segredos revelaria? Teria medo de dizer o que pensa? Do que se envergonharia? Prepare-se para conhecer Brás Cubas, um defunto-autor disposto a narrar suas memórias sem papas na língua, com boa dose de ironia, uma pitada de sarcasmo e muito pessimismo, ao mesmo tempo bem-humorado e melancólico – para vasculhar, no fundo, os mistérios da alma humana.",
+      "cover": "covers/OL61095027M.jpg",
+      "coverContentType": "image/jpeg"
+    },
+    {
+      "editionId": "OL62256772M",
+      "workId": "OL1756937W",
+      "title": "Grande Sertão: Veredas",
+      "authors": ["João Guimarães Rosa"],
+      "publisher": "Editora Nova Fronteira",
+      "publishedDate": "2001",
+      "publishedYear": 2001,
+      "isbn": "9788520912096",
+      "language": "por",
+      "description": "Ao narrar o mundo através dos olhos de Riobaldo, Guimarães Rosa constrói um romance fascinante, que mescla sofrimento, luta, alegria, violência, amor e morte em uma prosa extremamente inventiva. Neste clássico arrebatador, as paisagens percorridas pelos jagunços ganham uma dimensão universal e profundamente humana. “Sertão: é dentro da gente.”",
+      "cover": "covers/OL62256772M.jpg",
+      "coverContentType": "image/jpeg"
+    }
+  ]
+}

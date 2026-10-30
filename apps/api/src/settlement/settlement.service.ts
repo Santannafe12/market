@@ -108,11 +108,15 @@ export class SettlementService {
     return outcomes;
   }
 
-  async finalizeAuction(id: string): Promise<FinalizeOutcome> {
+  /** `receiptToken` is only passed by the seed, so the historical demo receipt keeps a known link. */
+  async finalizeAuction(id: string, receiptToken?: string): Promise<FinalizeOutcome> {
     if (!UUID_PATTERN.test(id)) {
       return { outcome: 'NOT_FOUND' };
     }
-    const work = await this.prisma.$transaction((tx) => this.finalizeOnce(tx, id), {
+    if (receiptToken !== undefined && !TOKEN_PATTERN.test(receiptToken)) {
+      throw new DomainError('VALIDATION_ERROR', 400, 'Token de comprovante inválido.');
+    }
+    const work = await this.prisma.$transaction((tx) => this.finalizeOnce(tx, id, receiptToken), {
       isolationLevel: Prisma.TransactionIsolationLevel.ReadCommitted,
       maxWait: 5_000,
       timeout: 30_000,
@@ -217,7 +221,11 @@ export class SettlementService {
     return { receivedCents: total };
   }
 
-  private async finalizeOnce(tx: Prisma.TransactionClient, id: string): Promise<FinalizeWork> {
+  private async finalizeOnce(
+    tx: Prisma.TransactionClient,
+    id: string,
+    receiptToken: string | undefined,
+  ): Promise<FinalizeWork> {
     await tx.$queryRaw(Prisma.sql`SELECT set_config('lock_timeout', ${TX_LOCK_TIMEOUT}, true)`);
     if (!(await lockAuction(tx, id))) {
       return { outcome: 'NOT_FOUND' };
@@ -293,7 +301,7 @@ export class SettlementService {
     await tx.receipt.create({
       data: {
         id: randomUUID(),
-        publicToken: randomBytes(18).toString('base64url'),
+        publicToken: receiptToken ?? randomBytes(18).toString('base64url'),
         auctionId: auction.id,
         winnerPublicId,
         sellerPublicId: auction.sellerPublicId,

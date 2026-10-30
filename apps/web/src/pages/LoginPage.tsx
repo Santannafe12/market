@@ -1,11 +1,13 @@
 import { useQueryClient } from '@tanstack/react-query';
+import { CircleAlert } from 'lucide-react';
 import { FormEvent, useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
+import { AuthShell } from '@/components/AppLayout';
+import { errorMessage } from '@/components/InlineError';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { ApiError, login } from '@/lib/api';
+import { login } from '@/lib/api';
 import { adoptSession, safeLotPath } from '@/lib/session';
 
 export function LoginPage() {
@@ -26,57 +28,60 @@ export function LoginPage() {
       await adoptSession(queryClient, result.accessToken);
       navigate(safeLotPath(location.state));
     } catch (caught) {
-      setError(caught instanceof ApiError ? caught.message : 'Não foi possível entrar.');
+      setError(errorMessage(caught, 'Não foi possível entrar.'));
     } finally {
       setPending(false);
     }
   }
 
   return (
-    <main className="mx-auto flex min-h-screen max-w-md items-center px-4">
-      <Card className="w-full">
-        <CardHeader>
-          <CardTitle>Entrar</CardTitle>
-          <CardDescription>Acesse a casa de leilões com o seu e-mail.</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <form className="flex flex-col gap-4" onSubmit={onSubmit}>
-            <div className="flex flex-col gap-2">
-              <Label htmlFor="email">E-mail</Label>
-              <Input
-                id="email"
-                type="email"
-                autoComplete="email"
-                required
-                value={email}
-                onChange={(event) => setEmail(event.target.value)}
-              />
-            </div>
-            <div className="flex flex-col gap-2">
-              <Label htmlFor="password">Senha</Label>
-              <Input
-                id="password"
-                type="password"
-                autoComplete="current-password"
-                minLength={8}
-                required
-                value={password}
-                onChange={(event) => setPassword(event.target.value)}
-              />
-            </div>
-            {error ? <p className="text-sm text-destructive">{error}</p> : null}
-            <Button type="submit" disabled={pending}>
-              {pending ? 'Entrando...' : 'Entrar'}
-            </Button>
-            <p className="text-sm text-muted-foreground">
-              Ainda não tem conta?{' '}
-              <Link className="font-medium text-foreground underline" to="/cadastro" state={location.state}>
-                Cadastre-se
-              </Link>
-            </p>
-          </form>
-        </CardContent>
-      </Card>
-    </main>
+    <AuthShell>
+      <div className="flex flex-col gap-2">
+        <h1 className="font-display text-3xl font-semibold tracking-tight">Entrar</h1>
+        <p className="text-sm text-muted-foreground">Acesse a casa de leilões com o seu e-mail.</p>
+      </div>
+      <form className="mt-8 flex flex-col gap-4" onSubmit={onSubmit}>
+        <div className="flex flex-col gap-2">
+          <Label htmlFor="email">E-mail</Label>
+          <Input
+            id="email"
+            type="email"
+            autoComplete="email"
+            className="h-11"
+            required
+            value={email}
+            onChange={(event) => setEmail(event.target.value)}
+          />
+        </div>
+        <div className="flex flex-col gap-2">
+          <Label htmlFor="password">Senha</Label>
+          <Input
+            id="password"
+            type="password"
+            autoComplete="current-password"
+            className="h-11"
+            minLength={8}
+            required
+            value={password}
+            onChange={(event) => setPassword(event.target.value)}
+          />
+        </div>
+        {error ? (
+          <p className="flex items-start gap-2 text-sm text-destructive" role="alert">
+            <CircleAlert className="mt-0.5 size-4 shrink-0" aria-hidden="true" />
+            {error}
+          </p>
+        ) : null}
+        <Button type="submit" size="lg" disabled={pending}>
+          {pending ? 'Entrando...' : 'Entrar'}
+        </Button>
+        <p className="text-center text-sm text-muted-foreground">
+          Ainda não tem conta?{' '}
+          <Link className="font-medium text-foreground underline underline-offset-4" to="/cadastro" state={location.state}>
+            Cadastre-se
+          </Link>
+        </p>
+      </form>
+    </AuthShell>
   );
 }

@@ -3,7 +3,12 @@ import { Injectable, Logger } from '@nestjs/common';
 import { Prisma, Role } from '@prisma/client';
 import { AuditService } from '../audit/audit.service';
 import { auditIdentities } from '../audit/audit';
-import { CatalogClient, CatalogRequestError, catalogHttpError } from '../catalog/catalog.client';
+import {
+  CatalogClient,
+  CatalogRequestError,
+  catalogHttpError,
+  type EditionDetail,
+} from '../catalog/catalog.client';
 import { DomainError } from '../common/domain-error';
 import { DomainEvents } from '../common/domain-events';
 import { PrismaService } from '../prisma/prisma.service';
@@ -15,6 +20,11 @@ import { ListAuctionsQueryDto } from './dto/list-auctions.dto';
 const TX_LOCK_TIMEOUT = '25s';
 const UUID_PATTERN =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
+export type LotSnapshot = {
+  edition: Omit<EditionDetail, 'coverId'>;
+  cover: { bytes: Buffer; contentType: string } | null;
+};
 
 @Injectable()
 export class AuctionsService {
@@ -32,9 +42,9 @@ export class AuctionsService {
     private readonly events: DomainEvents,
   ) {}
 
-  async list(status: ListAuctionsQueryDto['status']) {
+  async list(status: ListAuctionsQueryDto['status'], q?: string) {
     const now = await this.databaseNow(this.prisma);
-    const where: Prisma.AuctionWhereInput =
+    const byStatus: Prisma.AuctionWhereInput =
       status === 'live'
         ? { status: 'OPEN', startsAt: { lte: now }, endsAt: { gt: now } }
         : status === 'scheduled'
@@ -45,6 +55,10 @@ export class AuctionsService {
                 { status: { in: ['SETTLED', 'UNSOLD'] } },
               ],
             };
+    const term = q?.trim() ?? '';
+    const where: Prisma.AuctionWhereInput = term
+      ? { AND: [byStatus, { title: { contains: term, mode: 'insensitive' } }] }
+      : byStatus;
     const rows = await this.prisma.auction.findMany({
       where,
       orderBy: status === 'ended' ? { endsAt: 'desc' } : status === 'scheduled' ? { startsAt: 'asc' } : { endsAt: 'asc' },
@@ -139,7 +153,19 @@ export class AuctionsService {
   }
 
   async create(sellerId: string, input: CreateAuctionDto) {
-    const snapshot = await this.snapshot(input.editionId);
+    return this.createFromSnapshot(sellerId, input, await this.snapshot(input.editionId));
+  }
+
+  /**
+   * Same window, seller and anchor rules as the panel. The seed passes a snapshot read
+   * from the local fixture, so it never calls Open Library.
+   */
+  async createFromSnapshot(
+    sellerId: string,
+    input: Omit<CreateAuctionDto, 'editionId'>,
+    snapshot: LotSnapshot,
+    demoTag: string | null = null,
+  ) {
     const startsAt = parseInstant(input.startsAt);
     const endsAt = parseInstant(input.endsAt);
     if (!startsAt || !endsAt) {
@@ -211,6 +237,7 @@ export class AuctionsService {
           auditHeadHash,
           auditStateMac,
           auditKeyVersion: this.audit.keyVersion,
+          demoTag,
         },
         select: auctionViewSelect,
       });
@@ -327,7 +354,7 @@ export class AuctionsService {
     }
   }
 
-  private async snapshot(editionId: string) {
+  private async snapshot(editionId: string): Promise<LotSnapshot> {
     try {
       const edition = await this.catalog.edition(editionId);
       const cover = await this.catalog.downloadCover(edition.coverId);

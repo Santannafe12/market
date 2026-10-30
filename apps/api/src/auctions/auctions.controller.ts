@@ -46,7 +46,7 @@ export class AuctionsController {
   @Get()
   @UseGuards(JwtAuthGuard)
   list(@Query() query: ListAuctionsQueryDto) {
-    return this.auctions.list(query.status);
+    return this.auctions.list(query.status, query.q);
   }
 
   @Get(':id/audit')

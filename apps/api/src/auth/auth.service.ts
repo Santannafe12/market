@@ -29,7 +29,11 @@ export class AuthService {
     private readonly jwt: JwtService,
   ) {}
 
-  async register(input: { name: string; email: string; password: string; role: Role }) {
+  /** `fixedPublicId` is only passed by the seed; the HTTP route always allocates a random one. */
+  async register(
+    input: { name: string; email: string; password: string; role: Role },
+    fixedPublicId?: string,
+  ) {
     const name = input.name.trim();
     if (name.length < 2) {
       throw new DomainError('VALIDATION_ERROR', 400, 'O nome precisa ter pelo menos 2 caracteres.');
@@ -41,7 +45,7 @@ export class AuthService {
 
     try {
       const user = await this.prisma.$transaction(async (tx) => {
-        const publicId = await this.allocatePublicId(tx);
+        const publicId = fixedPublicId ?? (await this.allocatePublicId(tx));
         return tx.user.create({
           data: {
             publicId,

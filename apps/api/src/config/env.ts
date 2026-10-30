@@ -27,7 +27,11 @@ export function validateEnv(env: NodeJS.ProcessEnv) {
     throw new Error('PORT must be a positive integer');
   }
 
-  return { jwtSecret, auditHmacSecret, databaseUrl, webOrigin, port };
+  // Demo routines run only when a deploy opts in with the exact value "true".
+  const seedOnBoot = env.SEED_ON_BOOT === 'true';
+  const demoEnsure = env.DEMO_ENSURE === 'true';
+
+  return { jwtSecret, auditHmacSecret, databaseUrl, webOrigin, port, seedOnBoot, demoEnsure };
 }
 
 export type AppEnv = ReturnType<typeof validateEnv>;

@@ -1,3 +1,4 @@
+import { BookOpen } from 'lucide-react';
 import { useState } from 'react';
 import { coverUrl } from '@/lib/api';
 import { cn } from '@/lib/utils';
@@ -14,11 +15,12 @@ export function Cover({
     return (
       <div
         className={cn(
-          'flex items-center justify-center bg-muted text-center text-xs text-muted-foreground',
+          'flex flex-col items-center justify-center gap-2 bg-muted p-2 text-center text-xs text-muted-foreground',
           className,
         )}
       >
-        Sem capa
+        <BookOpen className="size-6 opacity-60" aria-hidden="true" />
+        <span>Sem capa</span>
       </div>
     );
   }
@@ -27,6 +29,7 @@ export function Cover({
     <img
       src={coverUrl(auction.id)}
       alt={`Capa de ${auction.title}`}
+      loading="lazy"
       className={cn('bg-muted object-cover', className)}
       onError={() => setFailed(true)}
     />

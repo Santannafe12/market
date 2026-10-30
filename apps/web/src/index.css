@@ -1,5 +1,7 @@
 @import "tailwindcss";
 
+@custom-variant dark (&:where(.dark, .dark *));
+
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
@@ -7,28 +9,66 @@
   --color-card-foreground: var(--card-foreground);
   --color-primary: var(--primary);
   --color-primary-foreground: var(--primary-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
   --color-muted: var(--muted);
   --color-muted-foreground: var(--muted-foreground);
   --color-border: var(--border);
   --color-input: var(--input);
   --color-ring: var(--ring);
   --color-destructive: var(--destructive);
-  --radius-lg: 0.5rem;
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-success: var(--success);
+  --color-warning: var(--warning);
+  --color-live: var(--live);
+  --radius-lg: 0.625rem;
+  --radius-xl: 0.875rem;
+  --font-sans: ui-sans-serif, system-ui, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --font-display: Georgia, Cambria, "Times New Roman", serif;
 }
 
 :root {
-  --background: #f4f7fb;
-  --foreground: #0f172a;
+  color-scheme: light;
+  --background: #f6f4ef;
+  --foreground: #1c1a17;
   --card: #ffffff;
-  --card-foreground: #0f172a;
-  --primary: #1e3a5f;
-  --primary-foreground: #f8fafc;
-  --muted: #e8eef5;
-  --muted-foreground: #64748b;
-  --border: #d6dee8;
-  --input: #d6dee8;
-  --ring: #1e3a5f;
+  --card-foreground: #1c1a17;
+  --primary: #1f2a44;
+  --primary-foreground: #f8f6f1;
+  --accent: #9a6b14;
+  --accent-foreground: #ffffff;
+  --muted: #efebe3;
+  --muted-foreground: #645d52;
+  --border: #e2dccf;
+  --input: #d6cebf;
+  --ring: #1f2a44;
   --destructive: #b42318;
+  --destructive-foreground: #ffffff;
+  --success: #15803d;
+  --warning: #b45309;
+  --live: #dc2626;
+}
+
+.dark {
+  color-scheme: dark;
+  --background: #111215;
+  --foreground: #ece8df;
+  --card: #191b20;
+  --card-foreground: #ece8df;
+  --primary: #e3c27a;
+  --primary-foreground: #1d1607;
+  --accent: #e3c27a;
+  --accent-foreground: #1d1607;
+  --muted: #23262d;
+  --muted-foreground: #a69f93;
+  --border: #2e323a;
+  --input: #3a3f49;
+  --ring: #e3c27a;
+  --destructive: #f87171;
+  --destructive-foreground: #2a0909;
+  --success: #4ade80;
+  --warning: #fbbf24;
+  --live: #dc2626;
 }
 
 body {
@@ -36,5 +76,6 @@ body {
   min-height: 100vh;
   background: var(--background);
   color: var(--foreground);
-  font-family: "Segoe UI", sans-serif;
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
 }

@@ -1,7 +1,7 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { BrowserRouter, Link, Navigate, Outlet, Route, Routes, useLocation } from 'react-router-dom';
+import { BrowserRouter, Navigate, Outlet, Route, Routes } from 'react-router-dom';
 import { RequireAuth } from '@/auth/RequireAuth';
-import { AppLayout } from '@/components/AppLayout';
+import { AppLayout, PublicLayout } from '@/components/AppLayout';
 import { AuctionDetailPage } from '@/pages/AuctionDetailPage';
 import { AuditPage } from '@/pages/AuditPage';
 import { LoginPage } from '@/pages/LoginPage';
@@ -53,23 +53,11 @@ export function App() {
 }
 
 function LotAccess() {
-  const location = useLocation();
-  const from = location.pathname.startsWith('/lotes/') ? location.pathname : null;
   if (!getToken()) {
     return (
-      <div className="min-h-screen">
-        <header className="border-b border-border bg-card">
-          <div className="mx-auto flex max-w-6xl items-center justify-between px-4 py-4">
-            <span className="text-base font-semibold">Casa de Leilões</span>
-            <Link className="text-sm font-medium underline" to="/entrar" state={from ? { from } : undefined}>
-              Entrar
-            </Link>
-          </div>
-        </header>
-        <main className="mx-auto flex w-full max-w-6xl flex-col gap-6 px-4 py-6">
-          <Outlet context={{ user: null }} />
-        </main>
-      </div>
+      <PublicLayout>
+        <Outlet context={{ user: null }} />
+      </PublicLayout>
     );
   }
 

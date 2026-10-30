@@ -8,5 +8,6 @@ import { BiddingService } from './bidding.service';
   imports: [AuthModule, AuditModule],
   controllers: [BiddingController],
   providers: [BiddingService],
+  exports: [BiddingService],
 })
 export class BiddingModule {}

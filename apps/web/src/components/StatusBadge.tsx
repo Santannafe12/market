@@ -9,15 +9,27 @@ const labels: Record<DisplayStatus, string> = {
 };
 
 const styles: Record<DisplayStatus, string> = {
-  live: 'bg-primary text-primary-foreground',
-  scheduled: 'bg-muted text-foreground',
-  ended: 'bg-muted text-muted-foreground',
-  cancelled: 'bg-destructive/10 text-destructive',
+  live: 'bg-live text-white',
+  scheduled: 'bg-card text-foreground ring-1 ring-border',
+  ended: 'bg-muted text-muted-foreground ring-1 ring-border',
+  cancelled: 'bg-card text-destructive ring-1 ring-destructive/40',
 };
 
-export function StatusBadge({ status }: { status: DisplayStatus }) {
+export function StatusBadge({ status, className }: { status: DisplayStatus; className?: string }) {
   return (
-    <span className={cn('inline-flex rounded-full px-2 py-0.5 text-xs font-medium', styles[status])}>
+    <span
+      className={cn(
+        'inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-xs font-semibold shadow-sm',
+        styles[status],
+        className,
+      )}
+    >
+      {status === 'live' ? (
+        <span className="relative flex size-1.5">
+          <span className="absolute inline-flex size-full animate-ping rounded-full bg-white/80" />
+          <span className="relative inline-flex size-1.5 rounded-full bg-white" />
+        </span>
+      ) : null}
       {labels[status]}
     </span>
   );

@@ -7,6 +7,7 @@
     "start:dev": "nest start --watch",
     "migrate": "node --env-file=../../.env ../../node_modules/prisma/build/index.js migrate deploy",
     "postinstall": "prisma generate",
+    "seed": "ts-node --transpile-only prisma/seed.ts",
     "test": "prisma generate && node test/ensure-db.js && jest --config ./test/jest-e2e.json --runInBand"
   },
   "dependencies": {

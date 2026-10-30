@@ -20,3 +20,6 @@ process.env.WEB_ORIGIN = process.env.WEB_ORIGIN ?? 'http://localhost:5173';
 process.env.PORT = process.env.PORT ?? '3000';
 // The suite calls settlement directly. A live 5s tick would close lots the other tests still hold open.
 process.env.SETTLEMENT_INTERVAL_MS = '3600000';
+// Demo routines stay off; the seed suite calls DemoSeed itself.
+process.env.SEED_ON_BOOT = 'false';
+process.env.DEMO_ENSURE = 'false';

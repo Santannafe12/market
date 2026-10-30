@@ -10,5 +10,6 @@ import { AuctionsService } from './auctions.service';
   imports: [AuthModule, AuditModule, CatalogModule, SettlementModule],
   controllers: [AuctionsController],
   providers: [AuctionsService],
+  exports: [AuctionsService],
 })
 export class AuctionsModule {}

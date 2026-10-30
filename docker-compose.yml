@@ -25,11 +25,22 @@ services:
     environment:
       DATABASE_URL: postgresql://market:market@postgres:5432/market
       PORT: 3000
+      SEED_ON_BOOT: ${SEED_ON_BOOT:-false}
+      DEMO_ENSURE: ${DEMO_ENSURE:-false}
     ports:
       - "3000:3000"
     depends_on:
       postgres:
         condition: service_healthy
+
+  web:
+    build:
+      context: .
+      dockerfile: apps/web/Dockerfile
+    ports:
+      - "8080:80"
+    depends_on:
+      - api
 
 volumes:
   pgdata:

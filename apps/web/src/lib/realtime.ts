@@ -31,7 +31,7 @@ export function ensureRealtime() {
   }
   disconnectRealtime();
   socketToken = token;
-  const next = io(apiUrl, {
+  const next = io(apiUrl || undefined, {
     autoConnect: true,
     transports: ['websocket', 'polling'],
     auth: (callback) => {

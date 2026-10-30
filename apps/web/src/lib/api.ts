@@ -31,7 +31,8 @@ export class ApiError extends Error {
   }
 }
 
-export const apiUrl = import.meta.env.VITE_API_URL ?? 'http://localhost:3000';
+/** An empty VITE_API_URL means same origin: the static server proxies `/api` and `/socket.io`. */
+export const apiUrl = (import.meta.env.VITE_API_URL ?? 'http://localhost:3000').replace(/\/+$/, '');
 
 export function getToken() {
   return localStorage.getItem(TOKEN_KEY);
@@ -68,7 +69,9 @@ async function request<T>(path: string, init: RequestInit = {}, authenticated = 
       }
       code = body.code;
     } catch {
-      message = response.statusText || message;
+      if (response.status >= 500) {
+        message = 'O servidor não respondeu. Tente de novo em instantes.';
+      }
     }
     throw new ApiError(response.status, message, code);
   }
@@ -156,8 +159,14 @@ export type EditionPreview = EditionSummary & {
   description: string | null;
 };
 
-export function listAuctions(status: 'live' | 'scheduled' | 'ended') {
-  return request<PublicAuction[]>(`/api/auctions?status=${status}`, { method: 'GET' }, true);
+export type ShowcaseStatus = 'live' | 'scheduled' | 'ended';
+
+export function listAuctions(status: ShowcaseStatus, q = '', signal?: AbortSignal) {
+  const params = new URLSearchParams({ status });
+  if (q.trim()) {
+    params.set('q', q.trim());
+  }
+  return request<PublicAuction[]>(`/api/auctions?${params.toString()}`, { method: 'GET', signal }, true);
 }
 
 export function myAuctions(signal?: AbortSignal) {
