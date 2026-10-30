@@ -2,8 +2,8 @@
 
 Casa de leilões do desafio Elite Dev / Verzel: API NestJS, PostgreSQL e um frontend em React. Leiloeiros publicam livros buscados na Open Library; licitantes depositam saldo simulado e dão lances ao vivo; o vencedor recebe um comprovante público, e qualquer pessoa audita o histórico de lances.
 
-- Frontend: `https://SEU-FRONTEND.vercel.app` (preencher após o deploy)
-- API: `https://SUA-API.vercel.app` (preencher após o deploy)
+- Frontend: `https://elite-leiloes-web-three.vercel.app/` (preencher após o deploy)
+- API: `https://market-six-zeta.vercel.app/` (preencher após o deploy)
 
 ## Funcionalidades
 
@@ -145,7 +145,7 @@ $env:DATABASE_URL="<URL pooled do Neon>"
 $env:DIRECT_URL="<URL direta do Neon>"
 $env:JWT_SECRET="<o mesmo valor da Vercel>"
 $env:AUDIT_HMAC_SECRET="<o mesmo valor da Vercel>"
-$env:WEB_ORIGIN="https://SEU-FRONTEND.vercel.app"
+$env:WEB_ORIGIN="https://elite-leiloes-web-three.vercel.app"
 npm run migrate
 npm run seed
 ```
@@ -179,7 +179,7 @@ A Vercel detecta `src/main.ts`, compila o Nest e publica tudo numa Function com 
 | Build Command | `npm run build` |
 | Output Directory | `dist` |
 
-Variável: `VITE_API_URL=https://SUA-API.vercel.app`. Ela entra no build: depois de mudar, faça um redeploy.
+Variável: `VITE_API_URL=https://https://market-six-zeta.vercel.app`. Ela entra no build: depois de mudar, faça um redeploy.
 
 O `apps/web/vercel.json` reescreve qualquer rota para `index.html`, então recarregar `/lotes/:id`, `/auditoria/:id` ou `/comprovantes/:token` funciona.
 
@@ -190,7 +190,7 @@ Depois do primeiro deploy do frontend, coloque a URL dele em `WEB_ORIGIN` na API
 ## Exemplos de API
 
 ```bash
-API=https://SUA-API.vercel.app
+API=https://https://market-six-zeta.vercel.app/
 
 # login
 curl -s -X POST $API/api/auth/login -H "Content-Type: application/json" \
